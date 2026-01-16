@@ -66,10 +66,22 @@ export default function EditorScreen() {
   useEffect(() => {
     const loadImageAsBase64 = async () => {
       try {
-        const base64 = await FileSystem.readAsStringAsync(imageUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        setImageBase64(base64);
+        if (Platform.OS === "web") {
+          const response = await fetch(imageUri);
+          const blob = await response.blob();
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            const base64 = result.split(",")[1];
+            setImageBase64(base64);
+          };
+          reader.readAsDataURL(blob);
+        } else {
+          const base64 = await FileSystem.readAsStringAsync(imageUri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          setImageBase64(base64);
+        }
       } catch (error) {
         console.error("Failed to load image as base64:", error);
       }
