@@ -1,12 +1,17 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import MainTabNavigator from "@/navigation/MainTabNavigator";
-import ModalScreen from "@/screens/ModalScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
+import { HeaderTitle } from "@/components/HeaderTitle";
+import HomeScreen from "@/screens/HomeScreen";
+import CameraScreen from "@/screens/CameraScreen";
+import EditorScreen from "@/screens/EditorScreen";
+import SettingsScreen from "@/screens/SettingsScreen";
 
 export type RootStackParamList = {
-  Main: undefined;
-  Modal: undefined;
+  Home: undefined;
+  Camera: undefined;
+  Editor: { imageUri: string };
+  Settings: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -17,16 +22,31 @@ export default function RootStackNavigator() {
   return (
     <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen
-        name="Main"
-        component={MainTabNavigator}
-        options={{ headerShown: false }}
+        name="Home"
+        component={HomeScreen}
+        options={{
+          headerTitle: () => <HeaderTitle title="MarkUp" />,
+        }}
       />
       <Stack.Screen
-        name="Modal"
-        component={ModalScreen}
+        name="Camera"
+        component={CameraScreen}
         options={{
-          presentation: "modal",
-          headerTitle: "Modal",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="Editor"
+        component={EditorScreen}
+        options={{
+          headerTitle: "Edit Photo",
+        }}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          headerTitle: "Settings",
         }}
       />
     </Stack.Navigator>
