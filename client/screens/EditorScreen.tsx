@@ -157,11 +157,7 @@ export default function EditorScreen() {
           [
             { 
               text: "Done", 
-              onPress: () => navigation.goBack() 
-            },
-            { 
-              text: "Continue Editing", 
-              style: "cancel" 
+              onPress: () => navigation.popToTop() 
             },
           ]
         );
