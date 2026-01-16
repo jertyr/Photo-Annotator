@@ -1,27 +1,37 @@
 # MarkUp - Job Site Photo Annotation App
 
 ## Overview
-MarkUp is a mobile app designed for remodelers and contractors to capture job site photos and annotate them with voice-dictated notes. The app uses AI to refine rough notes into cleaner, more professional annotations.
+MarkUp is a mobile app designed for remodelers and contractors to capture job site photos and annotate them with voice-dictated notes. The app uses AI to analyze photos and intelligently place annotations based on natural language descriptions.
 
 ## Current State
-- **Version**: 1.0.0
+- **Version**: 1.1.0
 - **Stack**: Expo React Native + Express.js backend
-- **Status**: Initial build complete
+- **Status**: AI-powered markup complete
 
 ## Key Features
 1. **Take Photo**: Capture job site photos directly with the camera
 2. **Edit Photo**: Select existing photos from gallery for annotation
-3. **Annotation Tools**:
-   - Text boxes (opaque white background, readable over photos)
+3. **AI-Powered Markup**: Describe what you want to mark in natural language
+   - "Draw an arrow pointing to the water damage"
+   - "Highlight the cracked tile in the corner"
+   - "Add a note about the electrical outlet"
+4. **Annotation Types** (AI-determined):
+   - Text boxes with orange left border
    - Arrows with attached notes
    - Highlight circles (yellow semi-transparent)
-4. **AI Text Refinement**: Optional AI cleanup of voice-dictated notes
 5. **Save to Gallery**: Annotated photos save directly to device gallery
+
+## How It Works
+1. Take or select a photo
+2. Describe the markup you want (use voice-to-text on your keyboard)
+3. AI analyzes the photo and your description using GPT-4o vision
+4. Annotations are placed at the correct locations automatically
+5. Save and return to home
 
 ## Navigation Flow
 Stack-only navigation (no tabs):
-- Home → Camera → Editor → (saves and returns)
-- Home → Edit Photo → Editor → (saves and returns)
+- Home → Camera → Editor → (saves and returns to home)
+- Home → Edit Photo → Editor → (saves and returns to home)
 - Home → Settings
 
 ## Project Architecture
@@ -35,6 +45,7 @@ Stack-only navigation (no tabs):
 
 ### Backend (server/)
 - `/routes.ts` - API endpoints
+  - `POST /api/analyze-markup` - Vision AI markup analysis (GPT-4o)
   - `POST /api/refine-text` - AI text refinement endpoint
   - `GET /api/health` - Health check endpoint
 
@@ -46,19 +57,25 @@ Stack-only navigation (no tabs):
 - **Style**: Bold utilitarian, construction-inspired
 
 ## Environment Variables
-- `OPENAI_API_KEY` - Required for AI text refinement (optional feature)
+- Uses Replit AI Integrations (no API key required)
+- `AI_INTEGRATIONS_OPENAI_API_KEY` - Auto-configured
+- `AI_INTEGRATIONS_OPENAI_BASE_URL` - Auto-configured
 
 ## User Preferences
 - Voice-to-text uses native phone keyboard (no in-app speech recognition)
-- AI refinement is optional per annotation
+- AI determines annotation type and placement based on description
 - Future: Google sign-in for usage tracking and monetization
 
 ## Recent Changes
-- Initial app creation with camera, editor, and annotation features
-- Stack-only navigation (removed tab bar per design guidelines)
-- AI text refinement via OpenAI API
+- Added AI-powered vision markup using GPT-4o
+- User describes markup in natural language, AI places annotations
+- Integrated Replit AI Integrations for OpenAI access
+- Updated save flow to return directly to home screen
+- Platform-specific image handling for web and native
 
 ## Development Notes
 - Camera and media library permissions handled with proper fallbacks
 - ViewShot used to capture annotated photos for saving
-- Annotations are positioned absolutely over the photo canvas
+- Annotations are positioned based on AI analysis of the photo
+- Web platform uses fetch/blob for base64 conversion
+- Native platform uses expo-file-system
