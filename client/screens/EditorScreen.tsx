@@ -315,19 +315,19 @@ export default function EditorScreen() {
       >
         <View style={styles.typeSelector}>
           <TypeButton
-            icon="edit-3"
+            icon="edit"
             label="Note"
             active={annotationType === "text"}
             onPress={() => setAnnotationType("text")}
           />
           <TypeButton
-            icon="corner-right-up"
+            icon="arrow-up-right"
             label="Arrow"
             active={annotationType === "arrow"}
             onPress={() => setAnnotationType("arrow")}
           />
           <TypeButton
-            icon="target"
+            icon="maximize"
             label="Highlight"
             active={annotationType === "highlight"}
             onPress={() => setAnnotationType("highlight")}
@@ -342,7 +342,7 @@ export default function EditorScreen() {
             ]}
           >
             <Feather 
-              name="corner-up-left" 
+              name="rotate-ccw" 
               size={20} 
               color={annotations.length === 0 ? AppColors.textSecondary : AppColors.charcoal} 
             />
