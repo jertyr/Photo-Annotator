@@ -4,13 +4,13 @@ import {
   StyleSheet,
   Pressable,
   Image,
-  Modal,
   TextInput,
   Alert,
   Platform,
   Dimensions,
   ScrollView,
   Linking,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -33,7 +33,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, AppColors, Shadows } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
-import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { apiRequest } from "@/lib/query-client";
 
 type EditorScreenProps = NativeStackScreenProps<RootStackParamList, "Editor">;
 
@@ -45,13 +45,7 @@ interface Annotation {
   x: number;
   y: number;
   text: string;
-  endX?: number;
-  endY?: number;
-  width?: number;
-  height?: number;
 }
-
-type Tool = "text" | "arrow" | "highlight" | null;
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const IMAGE_PADDING = Spacing.lg;
@@ -65,14 +59,12 @@ export default function EditorScreen() {
   const { imageUri } = route.params;
 
   const viewShotRef = useRef<ViewShot>(null);
-  const [activeTool, setActiveTool] = useState<Tool>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const [showTextModal, setShowTextModal] = useState(false);
-  const [pendingAnnotation, setPendingAnnotation] = useState<{ x: number; y: number; type: AnnotationType } | null>(null);
-  const [annotationText, setAnnotationText] = useState("");
-  const [useAiRefine, setUseAiRefine] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [useAiRefine, setUseAiRefine] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
+  const [annotationType, setAnnotationType] = useState<AnnotationType>("text");
 
   const refineMutation = useMutation({
     mutationFn: async (text: string) => {
@@ -81,44 +73,12 @@ export default function EditorScreen() {
     },
   });
 
-  const handleToolPress = (tool: Tool) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setActiveTool(activeTool === tool ? null : tool);
-  };
+  const handleAddAnnotation = async () => {
+    if (!noteText.trim()) return;
 
-  const handleImagePress = useCallback((event: any) => {
-    if (!activeTool) return;
-
-    const { locationX, locationY } = event.nativeEvent;
-    
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    if (activeTool === "highlight") {
-      const newAnnotation: Annotation = {
-        id: Date.now().toString(),
-        type: "highlight",
-        x: locationX - 40,
-        y: locationY - 40,
-        text: "",
-        width: 80,
-        height: 80,
-      };
-      setAnnotations(prev => [...prev, newAnnotation]);
-    } else {
-      setPendingAnnotation({ x: locationX, y: locationY, type: activeTool });
-      setShowTextModal(true);
-    }
-  }, [activeTool]);
-
-  const handleAddAnnotation = async () => {
-    if (!pendingAnnotation || !annotationText.trim()) {
-      setShowTextModal(false);
-      setPendingAnnotation(null);
-      setAnnotationText("");
-      return;
-    }
-
-    let finalText = annotationText.trim();
+    let finalText = noteText.trim();
 
     if (useAiRefine) {
       try {
@@ -131,21 +91,20 @@ export default function EditorScreen() {
       }
     }
 
+    const annotationCount = annotations.length;
+    const baseX = 20;
+    const baseY = 30 + (annotationCount * 50);
+
     const newAnnotation: Annotation = {
       id: Date.now().toString(),
-      type: pendingAnnotation.type,
-      x: pendingAnnotation.x,
-      y: pendingAnnotation.y,
+      type: annotationType,
+      x: baseX,
+      y: Math.min(baseY, imageLayout.height > 0 ? imageLayout.height - 60 : 200),
       text: finalText,
-      endX: pendingAnnotation.type === "arrow" ? pendingAnnotation.x + 60 : undefined,
-      endY: pendingAnnotation.type === "arrow" ? pendingAnnotation.y - 60 : undefined,
     };
 
     setAnnotations(prev => [...prev, newAnnotation]);
-    setShowTextModal(false);
-    setPendingAnnotation(null);
-    setAnnotationText("");
-    setUseAiRefine(false);
+    setNoteText("");
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
@@ -183,6 +142,7 @@ export default function EditorScreen() {
     }
 
     setIsSaving(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
       if (viewShotRef.current?.capture) {
@@ -241,18 +201,28 @@ export default function EditorScreen() {
   const renderAnnotation = (annotation: Annotation) => {
     if (annotation.type === "highlight") {
       return (
-        <View
-          key={annotation.id}
-          style={[
-            styles.highlightAnnotation,
-            {
-              left: annotation.x,
-              top: annotation.y,
-              width: annotation.width,
-              height: annotation.height,
-            },
-          ]}
-        />
+        <View key={annotation.id} style={StyleSheet.absoluteFill} pointerEvents="none">
+          <View
+            style={[
+              styles.highlightCircle,
+              {
+                left: annotation.x,
+                top: annotation.y,
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.textAnnotation,
+              {
+                left: annotation.x + 45,
+                top: annotation.y + 10,
+              },
+            ]}
+          >
+            <ThemedText style={styles.annotationText}>{annotation.text}</ThemedText>
+          </View>
+        </View>
       );
     }
 
@@ -261,30 +231,22 @@ export default function EditorScreen() {
         <View key={annotation.id} style={StyleSheet.absoluteFill} pointerEvents="none">
           <View
             style={[
-              styles.arrowLine,
+              styles.arrowContainer,
               {
                 left: annotation.x,
-                top: annotation.y - 50,
-                width: 3,
-                height: 50,
+                top: annotation.y,
               },
             ]}
-          />
-          <View
-            style={[
-              styles.arrowHead,
-              {
-                left: annotation.x - 6,
-                top: annotation.y - 58,
-              },
-            ]}
-          />
+          >
+            <View style={styles.arrowHead} />
+            <View style={styles.arrowLine} />
+          </View>
           <View
             style={[
               styles.textAnnotation,
               {
-                left: Math.max(8, annotation.x - 60),
-                top: annotation.y - 90,
+                left: annotation.x + 25,
+                top: annotation.y - 5,
               },
             ]}
           >
@@ -300,8 +262,8 @@ export default function EditorScreen() {
         style={[
           styles.textAnnotation,
           {
-            left: Math.max(8, annotation.x - 60),
-            top: annotation.y - 20,
+            left: annotation.x,
+            top: annotation.y,
           },
         ]}
       >
@@ -311,24 +273,29 @@ export default function EditorScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? "#1A1A1A" : AppColors.concreteGray }]}>
+    <KeyboardAvoidingView 
+      style={[styles.container, { backgroundColor: isDark ? "#1A1A1A" : AppColors.concreteGray }]}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={headerHeight}
+    >
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
           {
             paddingTop: headerHeight + Spacing.md,
-            paddingBottom: 100 + insets.bottom,
+            paddingBottom: Spacing.md,
           },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <ViewShot
           ref={viewShotRef}
           options={{ format: "jpg", quality: 1 }}
           style={styles.viewShot}
         >
-          <Pressable onPress={handleImagePress} style={styles.imageContainer}>
+          <View style={styles.imageContainer}>
             <Image
               source={{ uri: imageUri }}
               style={styles.image}
@@ -336,170 +303,141 @@ export default function EditorScreen() {
               onLayout={handleImageLayout}
             />
             {annotations.map(renderAnnotation)}
-          </Pressable>
+          </View>
         </ViewShot>
-
-        {activeTool ? (
-          <Animated.View 
-            entering={FadeIn.duration(200)}
-            style={styles.instructionBadge}
-          >
-            <ThemedText style={styles.instructionText}>
-              Tap on the photo to add {activeTool === "text" ? "a note" : activeTool === "arrow" ? "an arrow with note" : "a highlight"}
-            </ThemedText>
-          </Animated.View>
-        ) : null}
       </ScrollView>
 
       <Animated.View
         entering={FadeInDown.duration(300)}
         style={[
-          styles.toolbar,
+          styles.inputSection,
           {
             paddingBottom: insets.bottom + Spacing.md,
             backgroundColor: isDark ? AppColors.charcoal : AppColors.white,
           },
         ]}
       >
-        <View style={styles.toolbarContent}>
-          <ToolButton
-            icon="type"
-            label="Text"
-            active={activeTool === "text"}
-            onPress={() => handleToolPress("text")}
+        <View style={styles.typeSelector}>
+          <TypeButton
+            icon="edit-3"
+            label="Note"
+            active={annotationType === "text"}
+            onPress={() => setAnnotationType("text")}
           />
-          <ToolButton
-            icon="arrow-up-right"
+          <TypeButton
+            icon="corner-right-up"
             label="Arrow"
-            active={activeTool === "arrow"}
-            onPress={() => handleToolPress("arrow")}
+            active={annotationType === "arrow"}
+            onPress={() => setAnnotationType("arrow")}
           />
-          <ToolButton
-            icon="circle"
+          <TypeButton
+            icon="target"
             label="Highlight"
-            active={activeTool === "highlight"}
-            onPress={() => handleToolPress("highlight")}
+            active={annotationType === "highlight"}
+            onPress={() => setAnnotationType("highlight")}
           />
-          <View style={styles.toolbarDivider} />
-          <ToolButton
-            icon="rotate-ccw"
-            label="Undo"
-            active={false}
+          <View style={styles.typeSelectorDivider} />
+          <Pressable
             onPress={handleUndo}
             disabled={annotations.length === 0}
-          />
-        </View>
-      </Animated.View>
-
-      <Modal
-        visible={showTextModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowTextModal(false)}
-      >
-        <Pressable 
-          style={styles.modalOverlay}
-          onPress={() => setShowTextModal(false)}
-        >
-          <Pressable 
-            style={[styles.modalContent, { backgroundColor: isDark ? AppColors.charcoal : AppColors.white }]}
-            onPress={(e) => e.stopPropagation()}
+            style={[
+              styles.undoButton,
+              annotations.length === 0 && styles.undoButtonDisabled,
+            ]}
           >
-            <View style={styles.modalHeader}>
-              <ThemedText type="h4">Add Note</ThemedText>
-              <Pressable onPress={() => setShowTextModal(false)}>
-                <Feather name="x" size={24} color={theme.text} />
-              </Pressable>
-            </View>
+            <Feather 
+              name="corner-up-left" 
+              size={20} 
+              color={annotations.length === 0 ? AppColors.textSecondary : AppColors.charcoal} 
+            />
+          </Pressable>
+        </View>
 
+        <View style={styles.inputRow}>
+          <View style={[
+            styles.textInputContainer,
+            { backgroundColor: isDark ? theme.backgroundDefault : AppColors.concreteGray }
+          ]}>
             <TextInput
-              style={[
-                styles.textInput,
-                {
-                  backgroundColor: isDark ? theme.backgroundDefault : AppColors.concreteGray,
-                  color: theme.text,
-                },
-              ]}
-              placeholder="Type your note here..."
+              style={[styles.textInput, { color: theme.text }]}
+              placeholder="Describe your note (use voice-to-text)..."
               placeholderTextColor={AppColors.textSecondary}
-              value={annotationText}
-              onChangeText={setAnnotationText}
+              value={noteText}
+              onChangeText={setNoteText}
               multiline
-              autoFocus
               textAlignVertical="top"
             />
-
-            <Pressable
-              style={[styles.refineToggle, useAiRefine && styles.refineToggleActive]}
-              onPress={() => setUseAiRefine(!useAiRefine)}
-            >
-              <Feather 
-                name="zap" 
-                size={18} 
-                color={useAiRefine ? AppColors.white : AppColors.safetyOrange} 
-              />
-              <ThemedText 
-                style={[
-                  styles.refineToggleText,
-                  { color: useAiRefine ? AppColors.white : AppColors.safetyOrange }
-                ]}
-              >
-                Refine with AI
-              </ThemedText>
-            </Pressable>
-
-            <View style={styles.modalButtons}>
-              <Pressable
-                style={[styles.modalButton, styles.modalButtonSecondary]}
-                onPress={() => setShowTextModal(false)}
-              >
-                <ThemedText style={styles.modalButtonTextSecondary}>Cancel</ThemedText>
-              </Pressable>
-              <Pressable
-                style={[styles.modalButton, styles.modalButtonPrimary]}
-                onPress={handleAddAnnotation}
-                disabled={refineMutation.isPending}
-              >
-                <ThemedText style={styles.modalButtonTextPrimary}>
-                  {refineMutation.isPending ? "Adding..." : "Add"}
-                </ThemedText>
-              </Pressable>
-            </View>
+          </View>
+          <Pressable
+            style={[
+              styles.addButton,
+              !noteText.trim() && styles.addButtonDisabled,
+            ]}
+            onPress={handleAddAnnotation}
+            disabled={!noteText.trim() || refineMutation.isPending}
+          >
+            {refineMutation.isPending ? (
+              <ThemedText style={styles.addButtonText}>...</ThemedText>
+            ) : (
+              <Feather name="plus" size={24} color={AppColors.white} />
+            )}
           </Pressable>
+        </View>
+
+        <Pressable
+          style={[styles.aiToggle, useAiRefine && styles.aiToggleActive]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setUseAiRefine(!useAiRefine);
+          }}
+        >
+          <Feather 
+            name="zap" 
+            size={16} 
+            color={useAiRefine ? AppColors.white : AppColors.safetyOrange} 
+          />
+          <ThemedText 
+            style={[
+              styles.aiToggleText,
+              { color: useAiRefine ? AppColors.white : AppColors.safetyOrange }
+            ]}
+          >
+            AI Refine {useAiRefine ? "ON" : "OFF"}
+          </ThemedText>
         </Pressable>
-      </Modal>
-    </View>
+      </Animated.View>
+    </KeyboardAvoidingView>
   );
 }
 
-interface ToolButtonProps {
+interface TypeButtonProps {
   icon: keyof typeof Feather.glyphMap;
   label: string;
   active: boolean;
   onPress: () => void;
-  disabled?: boolean;
 }
 
-function ToolButton({ icon, label, active, onPress, disabled = false }: ToolButtonProps) {
+function TypeButton({ icon, label, active, onPress }: TypeButtonProps) {
   return (
     <Pressable
-      onPress={onPress}
-      disabled={disabled}
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onPress();
+      }}
       style={[
-        styles.toolButton,
-        active && styles.toolButtonActive,
-        disabled && styles.toolButtonDisabled,
+        styles.typeButton,
+        active && styles.typeButtonActive,
       ]}
     >
       <Feather
         name={icon}
-        size={22}
-        color={active ? AppColors.white : disabled ? AppColors.textSecondary : AppColors.charcoal}
+        size={18}
+        color={active ? AppColors.white : AppColors.charcoal}
       />
       <ThemedText
         style={[
-          styles.toolButtonLabel,
-          { color: active ? AppColors.white : disabled ? AppColors.textSecondary : AppColors.charcoal },
+          styles.typeButtonLabel,
+          { color: active ? AppColors.white : AppColors.charcoal },
         ]}
       >
         {label}
@@ -533,57 +471,99 @@ const styles = StyleSheet.create({
     width: "100%",
     aspectRatio: 4 / 3,
   },
-  instructionBadge: {
-    alignSelf: "center",
-    marginTop: Spacing.lg,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.full,
-  },
-  instructionText: {
-    color: AppColors.white,
-    fontSize: 13,
-  },
-  toolbar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingTop: Spacing.lg,
+  inputSection: {
+    paddingTop: Spacing.md,
     paddingHorizontal: Spacing.lg,
     ...Shadows.toolbar,
   },
-  toolbarContent: {
+  typeSelector: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.md,
+    marginBottom: Spacing.md,
+    gap: Spacing.sm,
   },
-  toolbarDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: AppColors.border,
-    marginHorizontal: Spacing.sm,
-  },
-  toolButton: {
+  typeButton: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.sm,
-    minWidth: 56,
+    gap: Spacing.xs,
   },
-  toolButtonActive: {
+  typeButtonActive: {
     backgroundColor: AppColors.safetyOrange,
   },
-  toolButtonDisabled: {
+  typeButtonLabel: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  typeSelectorDivider: {
+    flex: 1,
+  },
+  undoButton: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: AppColors.concreteGray,
+  },
+  undoButtonDisabled: {
     opacity: 0.4,
   },
-  toolButtonLabel: {
-    fontSize: 11,
-    fontWeight: "500",
-    marginTop: 2,
+  inputRow: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  textInputContainer: {
+    flex: 1,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    minHeight: 80,
+    maxHeight: 120,
+  },
+  textInput: {
+    fontSize: 16,
+    flex: 1,
+  },
+  addButton: {
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.md,
+    backgroundColor: AppColors.safetyOrange,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "flex-end",
+    ...Shadows.sm,
+  },
+  addButtonDisabled: {
+    backgroundColor: AppColors.textSecondary,
+  },
+  addButtonText: {
+    color: AppColors.white,
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  aiToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: AppColors.safetyOrange,
+    alignSelf: "center",
+  },
+  aiToggleActive: {
+    backgroundColor: AppColors.safetyOrange,
+    borderColor: AppColors.safetyOrange,
+  },
+  aiToggleText: {
+    fontSize: 13,
+    fontWeight: "600",
   },
   headerButton: {
     paddingVertical: Spacing.sm,
@@ -596,113 +576,47 @@ const styles = StyleSheet.create({
   },
   textAnnotation: {
     position: "absolute",
-    backgroundColor: "rgba(255,255,255,0.85)",
-    paddingVertical: Spacing.xs,
-    paddingHorizontal: Spacing.sm,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
     borderRadius: BorderRadius.xs,
-    maxWidth: 180,
+    maxWidth: 200,
     ...Shadows.sm,
   },
   annotationText: {
     color: AppColors.textPrimary,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "500",
+    lineHeight: 18,
   },
-  highlightAnnotation: {
+  highlightCircle: {
     position: "absolute",
-    backgroundColor: "rgba(255,213,79,0.35)",
-    borderRadius: BorderRadius.full,
-    borderWidth: 2,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,213,79,0.4)",
+    borderWidth: 3,
     borderColor: AppColors.highlightYellow,
   },
-  arrowLine: {
+  arrowContainer: {
     position: "absolute",
-    backgroundColor: AppColors.safetyOrange,
-    borderRadius: 2,
+    flexDirection: "row",
+    alignItems: "center",
   },
   arrowHead: {
-    position: "absolute",
     width: 0,
     height: 0,
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderBottomWidth: 12,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderBottomColor: AppColors.safetyOrange,
+    borderTopWidth: 6,
+    borderBottomWidth: 6,
+    borderLeftWidth: 10,
+    borderTopColor: "transparent",
+    borderBottomColor: "transparent",
+    borderLeftColor: AppColors.safetyOrange,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: Spacing.xl,
-  },
-  modalContent: {
-    width: "100%",
-    maxWidth: 400,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.xl,
-    ...Shadows.lg,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: Spacing.lg,
-  },
-  textInput: {
-    height: 120,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    fontSize: 16,
-    marginBottom: Spacing.lg,
-  },
-  refineToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.sm,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: AppColors.safetyOrange,
-    marginBottom: Spacing.lg,
-  },
-  refineToggleActive: {
+  arrowLine: {
+    width: 15,
+    height: 4,
     backgroundColor: AppColors.safetyOrange,
-    borderColor: AppColors.safetyOrange,
-  },
-  refineToggleText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  modalButtons: {
-    flexDirection: "row",
-    gap: Spacing.md,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    alignItems: "center",
-  },
-  modalButtonSecondary: {
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderColor: AppColors.border,
-  },
-  modalButtonPrimary: {
-    backgroundColor: AppColors.safetyOrange,
-  },
-  modalButtonTextSecondary: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: AppColors.textSecondary,
-  },
-  modalButtonTextPrimary: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: AppColors.white,
+    marginLeft: -2,
   },
 });
