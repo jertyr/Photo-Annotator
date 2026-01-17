@@ -78,12 +78,12 @@ export default function EditorScreen() {
           reader.readAsDataURL(blob);
         } else {
           let uri = imageUri;
-          const fileInfo = await FileSystem.getInfoAsync(uri);
-          if (!fileInfo.exists) {
-            console.error("File does not exist:", uri);
-            setImageBase64("skip");
-            return;
+          if (uri.startsWith("file://")) {
+            uri = uri;
+          } else if (!uri.startsWith("/")) {
+            uri = `file://${uri}`;
           }
+          
           const base64 = await FileSystem.readAsStringAsync(uri, {
             encoding: FileSystem.EncodingType.Base64,
           });
@@ -91,11 +91,11 @@ export default function EditorScreen() {
         }
       } catch (error) {
         console.error("Failed to load image as base64:", error);
-        setImageBase64("skip");
+        setImageBase64("ready");
       }
     };
     
-    const timer = setTimeout(loadImageAsBase64, 100);
+    const timer = setTimeout(loadImageAsBase64, 300);
     return () => clearTimeout(timer);
   }, [imageUri]);
 
@@ -126,7 +126,12 @@ export default function EditorScreen() {
 
   const handleAddAnnotation = async () => {
     if (!noteText.trim()) return;
-    if (!imageBase64 || imageBase64 === "skip") {
+    if (!imageBase64) {
+      Alert.alert("Loading", "Please wait a moment for the image to process");
+      return;
+    }
+    
+    if (imageBase64 === "ready") {
       const fallbackAnnotation: Annotation = {
         id: Date.now().toString(),
         type: "text",
@@ -206,22 +211,11 @@ export default function EditorScreen() {
         await MediaLibrary.saveToLibraryAsync(uri);
         
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        
-        Alert.alert(
-          "Saved!",
-          "Your annotated photo has been saved to your gallery.",
-          [
-            { 
-              text: "Done", 
-              onPress: () => navigation.popToTop() 
-            },
-          ]
-        );
+        navigation.popToTop();
       }
     } catch (error) {
       console.error("Failed to save photo:", error);
       Alert.alert("Error", "Failed to save photo. Please try again.");
-    } finally {
       setIsSaving(false);
     }
   };
