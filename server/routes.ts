@@ -61,24 +61,43 @@ Keep it brief - these are annotations for photos, not paragraphs.`,
         messages: [
           {
             role: "system",
-            content: `You are an expert construction photo annotator. Analyze the photo and the user's markup description to determine exactly where annotations should be placed.
+            content: `You are an expert construction photo annotator with precise object detection skills. Your job is to analyze photos and place annotations EXACTLY on the objects the user describes.
 
-The image is displayed in a viewport of approximately ${width}px wide by ${height}px tall.
-Coordinates MUST be provided in absolute pixels relative to this viewport (0,0 is top-left).
+VIEWPORT: The image is ${width}px wide by ${height}px tall. Coordinates are in pixels from top-left (0,0).
 
-IMPORTANT:
-1. Identify the specific object mentioned in the description.
-2. Provide the pixel coordinates (x, y) for that object.
-3. For arrows, the (x, y) should be the point of the arrow.
-4. For highlights, the (x, y) should be the center of the highlight.
-5. Provide a concise, professional label for the annotation.
+ANNOTATION TYPES:
+1. "circle" - A transparent circle to highlight/circle an object. Place (x,y) at CENTER of the object. Include "size" (radius in pixels, typically 30-80).
+2. "arrow" - An arrow pointing TO an object with a label. Place (x,y) at the ARROW TIP on the object.
+3. "measurement" - An architectural dimension line showing a measurement. Include "width" for horizontal span in pixels.
+4. "text" - A simple text label. Place (x,y) at the label position.
+5. "highlight" - A rectangular highlight area. Include "width" and "height" in pixels.
 
-Respond ONLY with a JSON object:
+CRITICAL RULES FOR ACCURACY:
+1. LOOK CAREFULLY at the photo. Find the EXACT object mentioned (car, crack, tile, outlet, etc.).
+2. Place coordinates at the ACTUAL pixel location of that object, not just somewhere in the image.
+3. For "circle the car" - find the car's center coordinates precisely.
+4. For measurements like "36 inches wide" - create a measurement annotation spanning the object.
+5. For "arrow pointing to X" - place the arrow tip ON the object X.
+
+MEASUREMENT FORMAT:
+When user mentions dimensions (36", 4 feet, 2.5m), create a "measurement" type with the text showing the dimension in architectural format: 3'-0", 36", 4'-6", etc.
+
+RESPOND ONLY WITH JSON:
 {
   "annotations": [
-    { "type": "arrow" | "highlight" | "text", "x": number, "y": number, "text": "string" }
+    { 
+      "type": "circle" | "arrow" | "measurement" | "text" | "highlight",
+      "x": number,
+      "y": number,
+      "text": "string",
+      "size": number (for circle radius),
+      "width": number (for measurement/highlight),
+      "height": number (for highlight)
+    }
   ]
-}`,
+}
+
+Be PRECISE. The user will drag to adjust if needed, but give them the best starting position by actually finding the object in the image.`,
           },
           {
             role: "user",
@@ -92,13 +111,15 @@ Respond ONLY with a JSON object:
               },
               {
                 type: "text",
-                text: `Please analyze this photo and add markup based on this description: "${description}"`,
+                text: `Analyze this photo carefully. Find and mark: "${description}"
+
+Look at the image and identify the EXACT location of what I'm describing. Place the annotation precisely on that object.`,
               },
             ],
           },
         ],
-        max_tokens: 500,
-        temperature: 0.3,
+        max_tokens: 600,
+        temperature: 0.2,
         response_format: { type: "json_object" },
       });
 
@@ -112,19 +133,18 @@ Respond ONLY with a JSON object:
         result = {
           annotations: [{
             type: "text",
-            x: 20,
-            y: 30,
+            x: width / 2,
+            y: height / 2,
             text: description,
           }],
-          summary: "Could not analyze image, placed annotation at default position",
         };
       }
 
       if (!result.annotations || !Array.isArray(result.annotations)) {
         result.annotations = [{
           type: "text",
-          x: 20,
-          y: 30,
+          x: width / 2,
+          y: height / 2,
           text: description,
         }];
       }
@@ -132,9 +152,12 @@ Respond ONLY with a JSON object:
       result.annotations = result.annotations.map((ann: any) => ({
         id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         type: ann.type || "text",
-        x: Math.max(10, Math.min(width - 100, ann.x || 20)),
-        y: Math.max(10, Math.min(height - 40, ann.y || 30)),
+        x: Math.max(10, Math.min(width - 20, ann.x || width / 2)),
+        y: Math.max(10, Math.min(height - 20, ann.y || height / 2)),
         text: ann.text || description,
+        size: ann.size || 40,
+        width: ann.width || 100,
+        height: ann.height || 50,
       }));
 
       res.json(result);
@@ -145,8 +168,8 @@ Respond ONLY with a JSON object:
         annotations: [{
           id: Date.now().toString(),
           type: "text",
-          x: 20,
-          y: 30,
+          x: 100,
+          y: 100,
           text: req.body.description || "Note",
         }],
       });

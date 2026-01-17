@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useEffect } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -9,7 +9,6 @@ import {
   Platform,
   Dimensions,
   ScrollView,
-  Linking,
   KeyboardAvoidingView,
   ActivityIndicator,
 } from "react-native";
@@ -25,18 +24,23 @@ import * as Sharing from "expo-sharing";
 import ViewShot from "react-native-view-shot";
 import Animated, {
   FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  runOnJS,
 } from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useMutation } from "@tanstack/react-query";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, AppColors, Shadows } from "@/constants/theme";
 import { RootStackParamList } from "@/navigation/RootStackNavigator";
-import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { getApiUrl } from "@/lib/query-client";
 
 type EditorScreenProps = NativeStackScreenProps<RootStackParamList, "Editor">;
 
-type AnnotationType = "text" | "arrow" | "highlight";
+type AnnotationType = "text" | "arrow" | "highlight" | "circle" | "measurement";
 
 interface Annotation {
   id: string;
@@ -44,10 +48,147 @@ interface Annotation {
   x: number;
   y: number;
   text: string;
+  size?: number;
+  width?: number;
+  height?: number;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const IMAGE_PADDING = Spacing.lg;
+
+function DraggableAnnotation({
+  annotation,
+  onPositionChange,
+  imageLayout,
+}: {
+  annotation: Annotation;
+  onPositionChange: (id: string, x: number, y: number) => void;
+  imageLayout: { width: number; height: number };
+}) {
+  const translateX = useSharedValue(annotation.x);
+  const translateY = useSharedValue(annotation.y);
+  const startX = useSharedValue(0);
+  const startY = useSharedValue(0);
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    translateX.value = annotation.x;
+    translateY.value = annotation.y;
+  }, [annotation.x, annotation.y]);
+
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      startX.value = translateX.value;
+      startY.value = translateY.value;
+      scale.value = withSpring(1.05);
+    })
+    .onUpdate((event) => {
+      translateX.value = Math.max(0, Math.min(imageLayout.width - 20, startX.value + event.translationX));
+      translateY.value = Math.max(0, Math.min(imageLayout.height - 20, startY.value + event.translationY));
+    })
+    .onEnd(() => {
+      scale.value = withSpring(1);
+      runOnJS(onPositionChange)(annotation.id, translateX.value, translateY.value);
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  const renderContent = () => {
+    switch (annotation.type) {
+      case "circle":
+        const circleSize = annotation.size || 60;
+        return (
+          <View style={styles.circleAnnotationWrapper}>
+            <View
+              style={[
+                styles.circleHighlight,
+                {
+                  width: circleSize * 2,
+                  height: circleSize * 2,
+                  borderRadius: circleSize,
+                  marginLeft: -circleSize,
+                  marginTop: -circleSize,
+                },
+              ]}
+            />
+            {annotation.text ? (
+              <View style={[styles.labelBox, { marginLeft: circleSize + 8, marginTop: -20 }]}>
+                <ThemedText style={styles.labelText}>{annotation.text}</ThemedText>
+              </View>
+            ) : null}
+          </View>
+        );
+
+      case "arrow":
+        return (
+          <View style={styles.arrowAnnotationWrapper}>
+            <View style={styles.arrowShape}>
+              <View style={styles.arrowHead} />
+              <View style={styles.arrowLine} />
+            </View>
+            <View style={styles.arrowLabelBox}>
+              <ThemedText style={styles.labelText}>{annotation.text}</ThemedText>
+            </View>
+          </View>
+        );
+
+      case "measurement":
+        const measureWidth = annotation.width || 100;
+        return (
+          <View style={[styles.measurementWrapper, { width: measureWidth }]}>
+            <View style={styles.measurementLine}>
+              <View style={styles.measurementEndcap} />
+              <View style={styles.measurementBar} />
+              <View style={styles.measurementEndcap} />
+            </View>
+            <View style={styles.measurementLabelBox}>
+              <ThemedText style={styles.measurementText}>{annotation.text}</ThemedText>
+            </View>
+          </View>
+        );
+
+      case "highlight":
+        const hlWidth = annotation.width || 80;
+        const hlHeight = annotation.height || 50;
+        return (
+          <View style={styles.highlightAnnotationWrapper}>
+            <View
+              style={[
+                styles.highlightRect,
+                { width: hlWidth, height: hlHeight, marginLeft: -hlWidth / 2, marginTop: -hlHeight / 2 },
+              ]}
+            />
+            {annotation.text ? (
+              <View style={[styles.labelBox, { marginTop: hlHeight / 2 + 4 }]}>
+                <ThemedText style={styles.labelText}>{annotation.text}</ThemedText>
+              </View>
+            ) : null}
+          </View>
+        );
+
+      default:
+        return (
+          <View style={styles.textLabelBox}>
+            <ThemedText style={styles.labelText}>{annotation.text}</ThemedText>
+          </View>
+        );
+    }
+  };
+
+  return (
+    <GestureDetector gesture={panGesture}>
+      <Animated.View style={[styles.draggableContainer, animatedStyle]}>
+        {renderContent()}
+      </Animated.View>
+    </GestureDetector>
+  );
+}
 
 export default function EditorScreen() {
   const insets = useSafeAreaInsets();
@@ -78,22 +219,17 @@ export default function EditorScreen() {
           };
           reader.readAsDataURL(blob);
         } else {
-          // Use the legacy FileSystem API which is stable
-          let uri = imageUri;
-          
-          const base64 = await FileSystem.readAsStringAsync(uri, {
+          const base64 = await FileSystem.readAsStringAsync(imageUri, {
             encoding: FileSystem.EncodingType.Base64,
           });
           setImageBase64(base64);
         }
       } catch (error) {
         console.error("Failed to load image as base64:", error);
-        // Don't set it to null, set to a state that indicates we should use fallback but tried
         setImageBase64("failed");
       }
     };
-    
-    // Give filesystem a moment to settle after camera capture
+
     const timer = setTimeout(loadImageAsBase64, 500);
     return () => clearTimeout(timer);
   }, [imageUri]);
@@ -103,7 +239,7 @@ export default function EditorScreen() {
       if (!imageBase64 || imageBase64 === "failed") {
         throw new Error("Image not ready for AI analysis");
       }
-      
+
       const response = await fetch(new URL("/api/analyze-markup", getApiUrl()).toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -114,22 +250,27 @@ export default function EditorScreen() {
           imageHeight: imageLayout.height || 300,
         }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to analyze markup");
       }
-      
+
       return response.json();
     },
   });
 
+  const handlePositionChange = (id: string, x: number, y: number) => {
+    setAnnotations((prev) =>
+      prev.map((ann) => (ann.id === id ? { ...ann, x, y } : ann))
+    );
+  };
+
   const handleAddAnnotation = async () => {
     if (!noteText.trim()) return;
-    
-    // Ensure we have the image base64, if not wait a bit or try to reload it
+
     if (!imageBase64 || imageBase64 === "failed") {
-      Alert.alert("Processing Image", "Please wait a moment while we prepare the image for AI analysis.");
+      Alert.alert("Processing Image", "Please wait while the image is prepared.");
       return;
     }
 
@@ -142,9 +283,9 @@ export default function EditorScreen() {
     while (attempt <= maxRetries && !success) {
       try {
         const result = await analyzeMarkupMutation.mutateAsync(noteText.trim());
-        
+
         if (result.annotations && Array.isArray(result.annotations)) {
-          setAnnotations(prev => [...prev, ...result.annotations]);
+          setAnnotations((prev) => [...prev, ...result.annotations]);
           setNoteText("");
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           success = true;
@@ -154,32 +295,31 @@ export default function EditorScreen() {
       } catch (error) {
         attempt++;
         console.error(`AI analysis attempt ${attempt} failed:`, error);
-        
+
         if (attempt <= maxRetries) {
-          // Wait a short bit before retrying
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         } else {
           Alert.alert(
             "AI Analysis Failed",
-            "We couldn't analyze the photo after several attempts. Would you like to add it as a standard note instead?",
+            "Could not analyze the photo. Add as a note instead?",
             [
               { text: "Try Again", onPress: () => handleAddAnnotation() },
-              { 
-                text: "Add as Note", 
+              {
+                text: "Add as Note",
                 onPress: () => {
                   const fallbackAnnotation: Annotation = {
                     id: Date.now().toString(),
                     type: "text",
                     x: 50,
-                    y: 50 + (annotations.length * 60),
+                    y: 50 + annotations.length * 60,
                     text: noteText.trim(),
                   };
-                  setAnnotations(prev => [...prev, fallbackAnnotation]);
+                  setAnnotations((prev) => [...prev, fallbackAnnotation]);
                   setNoteText("");
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                }
+                },
               },
-              { text: "Cancel", style: "cancel" }
+              { text: "Cancel", style: "cancel" },
             ]
           );
         }
@@ -190,7 +330,7 @@ export default function EditorScreen() {
   const handleUndo = () => {
     if (annotations.length === 0) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setAnnotations(prev => prev.slice(0, -1));
+    setAnnotations((prev) => prev.slice(0, -1));
   };
 
   const handleSave = async () => {
@@ -201,14 +341,13 @@ export default function EditorScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
       if (viewShotRef.current?.capture) {
-        const uri = await viewShotRef.current.capture({
+        const uri = await (viewShotRef.current.capture as (options?: any) => Promise<string>)({
           format: "jpg",
           quality: 0.9,
-          result: "tmpfile"
+          result: "tmpfile",
         });
 
         if (Platform.OS === "web") {
-          // Web download fallback
           const response = await fetch(uri);
           const blob = await response.blob();
           const url = window.URL.createObjectURL(blob);
@@ -219,7 +358,7 @@ export default function EditorScreen() {
           link.click();
           document.body.removeChild(link);
           window.URL.revokeObjectURL(url);
-          
+
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           Alert.alert("Success", "Photo download started.");
         } else {
@@ -228,15 +367,12 @@ export default function EditorScreen() {
             if (status === "granted") {
               const asset = await MediaLibrary.createAssetAsync(uri);
               await MediaLibrary.createAlbumAsync("MarkUp", asset, false);
-              
+
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              Alert.alert(
-                "Saved!",
-                "Photo saved to MarkUp album.",
-                [{ text: "Done", onPress: () => navigation.popToTop() }]
-              );
+              Alert.alert("Saved!", "Photo saved to MarkUp album.", [
+                { text: "Done", onPress: () => navigation.popToTop() },
+              ]);
             } else {
-              // Permission denied, use sharing as fallback
               if (await Sharing.isAvailableAsync()) {
                 await Sharing.shareAsync(uri);
               } else {
@@ -272,102 +408,18 @@ export default function EditorScreen() {
         <Pressable
           onPress={handleSave}
           disabled={isSaving}
-          style={({ pressed }) => [
-            styles.headerButton,
-            { opacity: pressed || isSaving ? 0.6 : 1 }
-          ]}
+          style={({ pressed }) => [styles.headerButton, { opacity: pressed || isSaving ? 0.6 : 1 }]}
         >
-          <ThemedText style={styles.headerButtonText}>
-            {isSaving ? "Saving..." : "Save"}
-          </ThemedText>
+          <ThemedText style={styles.headerButtonText}>{isSaving ? "Saving..." : "Save"}</ThemedText>
         </Pressable>
       ),
     });
   }, [navigation, isSaving]);
 
-  const renderAnnotation = (annotation: Annotation) => {
-    // Convert relative coordinates if they are 0-1 range, or handle if they are absolute
-    // The backend prompt should ideally return absolute pixels based on width/height
-    const posX = annotation.x;
-    const posY = annotation.y;
-
-    if (annotation.type === "highlight") {
-      return (
-        <View key={annotation.id} style={StyleSheet.absoluteFill} pointerEvents="none">
-          <View
-            style={[
-              styles.highlightCircle,
-              {
-                left: posX,
-                top: posY,
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.textAnnotation,
-              {
-                left: posX + 40,
-                top: posY + 10,
-              },
-            ]}
-          >
-            <ThemedText style={styles.annotationText}>{annotation.text}</ThemedText>
-          </View>
-        </View>
-      );
-    }
-
-    if (annotation.type === "arrow") {
-      return (
-        <View key={annotation.id} style={StyleSheet.absoluteFill} pointerEvents="none">
-          <View
-            style={[
-              styles.arrowContainer,
-              {
-                left: posX,
-                top: posY,
-              },
-            ]}
-          >
-            <View style={styles.arrowHead} />
-            <View style={styles.arrowLine} />
-          </View>
-          <View
-            style={[
-              styles.textAnnotation,
-              {
-                left: posX + 20,
-                top: posY - 5,
-              },
-            ]}
-          >
-            <ThemedText style={styles.annotationText}>{annotation.text}</ThemedText>
-          </View>
-        </View>
-      );
-    }
-
-    return (
-      <View
-        key={annotation.id}
-        style={[
-          styles.textAnnotation,
-          {
-            left: posX,
-            top: posY,
-          },
-        ]}
-      >
-        <ThemedText style={styles.annotationText}>{annotation.text}</ThemedText>
-      </View>
-    );
-  };
-
   const isLoading = analyzeMarkupMutation.isPending;
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: isDark ? "#1A1A1A" : AppColors.concreteGray }]}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={headerHeight}
@@ -383,12 +435,9 @@ export default function EditorScreen() {
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        scrollEnabled={!isLoading}
       >
-        <ViewShot
-          ref={viewShotRef}
-          options={{ format: "jpg", quality: 1 }}
-          style={styles.viewShot}
-        >
+        <ViewShot ref={viewShotRef} options={{ format: "jpg", quality: 1 }} style={styles.viewShot}>
           <View style={styles.imageContainer}>
             <Image
               source={{ uri: imageUri }}
@@ -396,9 +445,23 @@ export default function EditorScreen() {
               resizeMode="contain"
               onLayout={handleImageLayout}
             />
-            {annotations.map(renderAnnotation)}
+            <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+              {annotations.map((annotation) => (
+                <DraggableAnnotation
+                  key={annotation.id}
+                  annotation={annotation}
+                  onPositionChange={handlePositionChange}
+                  imageLayout={imageLayout}
+                />
+              ))}
+            </View>
           </View>
         </ViewShot>
+
+        <View style={styles.instructionBox}>
+          <Feather name="move" size={16} color={AppColors.textSecondary} />
+          <ThemedText style={styles.instructionText}>Drag annotations to reposition them</ThemedText>
+        </View>
       </ScrollView>
 
       <Animated.View
@@ -414,18 +477,20 @@ export default function EditorScreen() {
         <View style={styles.helpTextContainer}>
           <Feather name="zap" size={14} color={AppColors.safetyOrange} />
           <ThemedText style={styles.helpText}>
-            Describe what you want to mark (e.g., "Arrow pointing to the crack in the wall")
+            Examples: "Circle the car" or "Arrow to the crack" or "36 inches wide"
           </ThemedText>
         </View>
 
         <View style={styles.inputRow}>
-          <View style={[
-            styles.textInputContainer,
-            { backgroundColor: isDark ? theme.backgroundDefault : AppColors.concreteGray }
-          ]}>
+          <View
+            style={[
+              styles.textInputContainer,
+              { backgroundColor: isDark ? theme.backgroundDefault : AppColors.concreteGray },
+            ]}
+          >
             <TextInput
               style={[styles.textInput, { color: theme.text }]}
-              placeholder="Draw an arrow to the water damage..."
+              placeholder="Describe what to mark..."
               placeholderTextColor={AppColors.textSecondary}
               value={noteText}
               onChangeText={setNoteText}
@@ -435,10 +500,7 @@ export default function EditorScreen() {
             />
           </View>
           <Pressable
-            style={[
-              styles.addButton,
-              (!noteText.trim() || isLoading) && styles.addButtonDisabled,
-            ]}
+            style={[styles.addButton, (!noteText.trim() || isLoading) && styles.addButtonDisabled]}
             onPress={handleAddAnnotation}
             disabled={!noteText.trim() || isLoading}
           >
@@ -454,20 +516,17 @@ export default function EditorScreen() {
           <Pressable
             onPress={handleUndo}
             disabled={annotations.length === 0}
-            style={[
-              styles.undoButton,
-              annotations.length === 0 && styles.undoButtonDisabled,
-            ]}
+            style={[styles.undoButton, annotations.length === 0 && styles.undoButtonDisabled]}
           >
-            <Feather 
-              name="rotate-ccw" 
-              size={18} 
-              color={annotations.length === 0 ? AppColors.textSecondary : AppColors.charcoal} 
+            <Feather
+              name="rotate-ccw"
+              size={18}
+              color={annotations.length === 0 ? AppColors.textSecondary : AppColors.charcoal}
             />
-            <ThemedText 
+            <ThemedText
               style={[
                 styles.undoText,
-                { color: annotations.length === 0 ? AppColors.textSecondary : AppColors.charcoal }
+                { color: annotations.length === 0 ? AppColors.textSecondary : AppColors.charcoal },
               ]}
             >
               Undo
@@ -507,6 +566,18 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     aspectRatio: 4 / 3,
+  },
+  instructionBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.xs,
+    marginTop: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  instructionText: {
+    fontSize: 13,
+    color: AppColors.textSecondary,
   },
   inputSection: {
     paddingTop: Spacing.md,
@@ -587,51 +658,119 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  textAnnotation: {
+  draggableContainer: {
     position: "absolute",
-    backgroundColor: "rgba(255,255,255,0.95)",
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.xs,
-    maxWidth: 200,
+    top: 0,
+    left: 0,
+  },
+  circleAnnotationWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  circleHighlight: {
+    backgroundColor: "rgba(255, 107, 53, 0.25)",
+    borderWidth: 3,
+    borderColor: AppColors.safetyOrange,
+    borderStyle: "dashed",
+  },
+  labelBox: {
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 4,
     borderLeftWidth: 3,
     borderLeftColor: AppColors.safetyOrange,
-    ...Shadows.sm,
+    maxWidth: 180,
   },
-  annotationText: {
-    color: AppColors.textPrimary,
-    fontSize: 14,
-    fontWeight: "500",
-    lineHeight: 18,
+  labelText: {
+    color: "#1A1A1A",
+    fontSize: 13,
+    fontWeight: "600",
   },
-  highlightCircle: {
-    position: "absolute",
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "rgba(255,213,79,0.35)",
-    borderWidth: 3,
-    borderColor: AppColors.highlightYellow,
+  arrowAnnotationWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
   },
-  arrowContainer: {
-    position: "absolute",
+  arrowShape: {
     flexDirection: "row",
     alignItems: "center",
   },
   arrowHead: {
     width: 0,
     height: 0,
-    borderTopWidth: 8,
-    borderBottomWidth: 8,
-    borderLeftWidth: 14,
+    borderTopWidth: 10,
+    borderBottomWidth: 10,
+    borderRightWidth: 16,
     borderTopColor: "transparent",
     borderBottomColor: "transparent",
-    borderLeftColor: AppColors.safetyOrange,
+    borderRightColor: AppColors.safetyOrange,
   },
   arrowLine: {
-    width: 20,
-    height: 5,
+    width: 30,
+    height: 6,
     backgroundColor: AppColors.safetyOrange,
-    marginLeft: -3,
+    marginLeft: -2,
+  },
+  arrowLabelBox: {
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 4,
+    marginLeft: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: AppColors.safetyOrange,
+    maxWidth: 180,
+  },
+  measurementWrapper: {
+    alignItems: "center",
+  },
+  measurementLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+  },
+  measurementEndcap: {
+    width: 3,
+    height: 20,
+    backgroundColor: AppColors.safetyOrange,
+  },
+  measurementBar: {
+    flex: 1,
+    height: 3,
+    backgroundColor: AppColors.safetyOrange,
+  },
+  measurementLabelBox: {
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 3,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: AppColors.safetyOrange,
+  },
+  measurementText: {
+    color: "#1A1A1A",
+    fontSize: 14,
+    fontWeight: "700",
+    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
+  },
+  highlightAnnotationWrapper: {
+    alignItems: "center",
+  },
+  highlightRect: {
+    backgroundColor: "rgba(255, 213, 79, 0.35)",
+    borderWidth: 2,
+    borderColor: "#FFD54F",
+    borderRadius: 4,
+  },
+  textLabelBox: {
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: AppColors.safetyOrange,
+    maxWidth: 200,
+    ...Shadows.sm,
   },
 });
