@@ -77,10 +77,9 @@ export default function EditorScreen() {
           };
           reader.readAsDataURL(blob);
         } else {
+          // Robust URI handling for native
           let uri = imageUri;
-          if (uri.startsWith("file://")) {
-            uri = uri;
-          } else if (!uri.startsWith("/")) {
+          if (!uri.startsWith("file://") && !uri.startsWith("content://") && !uri.startsWith("/")) {
             uri = `file://${uri}`;
           }
           
@@ -91,18 +90,20 @@ export default function EditorScreen() {
         }
       } catch (error) {
         console.error("Failed to load image as base64:", error);
-        setImageBase64("ready");
+        // Don't set it to null, set to a state that indicates we should use fallback but tried
+        setImageBase64("failed");
       }
     };
     
-    const timer = setTimeout(loadImageAsBase64, 300);
+    // Give filesystem a moment to settle after camera capture
+    const timer = setTimeout(loadImageAsBase64, 500);
     return () => clearTimeout(timer);
   }, [imageUri]);
 
   const analyzeMarkupMutation = useMutation({
     mutationFn: async (description: string) => {
-      if (!imageBase64) {
-        throw new Error("Image not loaded");
+      if (!imageBase64 || imageBase64 === "failed") {
+        throw new Error("Image not ready for AI analysis");
       }
       
       const response = await fetch(new URL("/api/analyze-markup", getApiUrl()).toString(), {
@@ -117,7 +118,8 @@ export default function EditorScreen() {
       });
       
       if (!response.ok) {
-        throw new Error("Failed to analyze markup");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to analyze markup");
       }
       
       return response.json();
@@ -126,17 +128,14 @@ export default function EditorScreen() {
 
   const handleAddAnnotation = async () => {
     if (!noteText.trim()) return;
-    if (!imageBase64) {
-      Alert.alert("Loading", "Please wait a moment for the image to process");
-      return;
-    }
     
-    if (imageBase64 === "ready") {
+    // If image loading failed or is still loading, use fallback
+    if (!imageBase64 || imageBase64 === "failed") {
       const fallbackAnnotation: Annotation = {
         id: Date.now().toString(),
         type: "text",
-        x: 20,
-        y: 30 + (annotations.length * 50),
+        x: 50,
+        y: 50 + (annotations.length * 60),
         text: noteText.trim(),
       };
       setAnnotations(prev => [...prev, fallbackAnnotation]);
@@ -154,14 +153,16 @@ export default function EditorScreen() {
         setAnnotations(prev => [...prev, ...result.annotations]);
         setNoteText("");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        throw new Error("Invalid AI response format");
       }
     } catch (error) {
       console.error("AI analysis failed:", error);
       const fallbackAnnotation: Annotation = {
         id: Date.now().toString(),
         type: "text",
-        x: 20,
-        y: 30 + (annotations.length * 50),
+        x: 50,
+        y: 50 + (annotations.length * 60),
         text: noteText.trim(),
       };
       setAnnotations(prev => [...prev, fallbackAnnotation]);
@@ -177,45 +178,52 @@ export default function EditorScreen() {
   };
 
   const handleSave = async () => {
-    const { status } = await MediaLibrary.requestPermissionsAsync();
-    
-    if (status !== "granted") {
-      Alert.alert(
-        "Permission Required",
-        "MarkUp needs permission to save photos to your gallery.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { 
-            text: "Open Settings", 
-            onPress: () => {
-              if (Platform.OS !== "web") {
-                try {
-                  Linking.openSettings();
-                } catch (error) {
-                  // openSettings not supported
-                }
-              }
-            }
-          },
-        ]
-      );
-      return;
-    }
-
-    setIsSaving(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (isSaving) return;
 
     try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "MarkUp needs permission to save photos to your gallery.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { 
+              text: "Open Settings", 
+              onPress: () => {
+                if (Platform.OS !== "web") {
+                  try {
+                    Linking.openSettings();
+                  } catch (error) {
+                    // openSettings not supported
+                  }
+                }
+              }
+            },
+          ]
+        );
+        return;
+      }
+
+      setIsSaving(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
       if (viewShotRef.current?.capture) {
         const uri = await viewShotRef.current.capture();
         await MediaLibrary.saveToLibraryAsync(uri);
         
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        navigation.popToTop();
+        
+        // Use a slight delay to ensure user sees success feedback before navigating
+        setTimeout(() => {
+          navigation.navigate("Home");
+        }, 300);
       }
     } catch (error) {
       console.error("Failed to save photo:", error);
       Alert.alert("Error", "Failed to save photo. Please try again.");
+    } finally {
       setIsSaving(false);
     }
   };
@@ -245,6 +253,11 @@ export default function EditorScreen() {
   }, [navigation, isSaving]);
 
   const renderAnnotation = (annotation: Annotation) => {
+    // Convert relative coordinates if they are 0-1 range, or handle if they are absolute
+    // The backend prompt should ideally return absolute pixels based on width/height
+    const posX = annotation.x;
+    const posY = annotation.y;
+
     if (annotation.type === "highlight") {
       return (
         <View key={annotation.id} style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -252,8 +265,8 @@ export default function EditorScreen() {
             style={[
               styles.highlightCircle,
               {
-                left: annotation.x,
-                top: annotation.y,
+                left: posX,
+                top: posY,
               },
             ]}
           />
@@ -261,8 +274,8 @@ export default function EditorScreen() {
             style={[
               styles.textAnnotation,
               {
-                left: annotation.x + 45,
-                top: annotation.y + 10,
+                left: posX + 40,
+                top: posY + 10,
               },
             ]}
           >
@@ -279,8 +292,8 @@ export default function EditorScreen() {
             style={[
               styles.arrowContainer,
               {
-                left: annotation.x,
-                top: annotation.y,
+                left: posX,
+                top: posY,
               },
             ]}
           >
@@ -291,8 +304,8 @@ export default function EditorScreen() {
             style={[
               styles.textAnnotation,
               {
-                left: annotation.x + 25,
-                top: annotation.y - 5,
+                left: posX + 20,
+                top: posY - 5,
               },
             ]}
           >
@@ -308,8 +321,8 @@ export default function EditorScreen() {
         style={[
           styles.textAnnotation,
           {
-            left: annotation.x,
-            top: annotation.y,
+            left: posX,
+            top: posY,
           },
         ]}
       >

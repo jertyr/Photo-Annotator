@@ -63,26 +63,22 @@ Keep it brief - these are annotations for photos, not paragraphs.`,
             role: "system",
             content: `You are an expert construction photo annotator. Analyze the photo and the user's markup description to determine exactly where annotations should be placed.
 
-The image dimensions are ${width}px wide by ${height}px tall. Coordinates start from the top-left corner (0,0).
+The image is displayed in a viewport of approximately ${width}px wide by ${height}px tall.
+Coordinates MUST be provided in absolute pixels relative to this viewport (0,0 is top-left).
 
-Based on the user's description, identify what they want to mark and where in the image it is located.
+IMPORTANT:
+1. Identify the specific object mentioned in the description.
+2. Provide the pixel coordinates (x, y) for that object.
+3. For arrows, the (x, y) should be the point of the arrow.
+4. For highlights, the (x, y) should be the center of the highlight.
+5. Provide a concise, professional label for the annotation.
 
-Respond with a JSON object containing an array of annotations. Each annotation should have:
-- type: "text" (for notes), "arrow" (for pointing to something), or "highlight" (for circling/highlighting an area)
-- x: x-coordinate in pixels (0 to ${width})
-- y: y-coordinate in pixels (0 to ${height})
-- text: the annotation text to display (concise, professional)
-
-Example response:
+Respond ONLY with a JSON object:
 {
   "annotations": [
-    { "type": "arrow", "x": 150, "y": 100, "text": "Water damage here" },
-    { "type": "highlight", "x": 250, "y": 200, "text": "Cracked tile" }
-  ],
-  "summary": "Brief description of what you found"
-}
-
-Place annotations where the described items actually appear in the image. If you can't identify the exact location, make a reasonable estimate based on the description.`,
+    { "type": "arrow" | "highlight" | "text", "x": number, "y": number, "text": "string" }
+  ]
+}`,
           },
           {
             role: "user",
