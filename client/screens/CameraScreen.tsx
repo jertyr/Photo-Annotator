@@ -50,8 +50,9 @@ export default function CameraScreen() {
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 1,
-        skipProcessing: false,
+        quality: 0.9,
+        skipProcessing: true,
+        shutterSound: false,
       });
 
       if (photo?.uri) {

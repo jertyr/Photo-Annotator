@@ -77,16 +77,26 @@ export default function EditorScreen() {
           };
           reader.readAsDataURL(blob);
         } else {
-          const base64 = await FileSystem.readAsStringAsync(imageUri, {
+          let uri = imageUri;
+          const fileInfo = await FileSystem.getInfoAsync(uri);
+          if (!fileInfo.exists) {
+            console.error("File does not exist:", uri);
+            setImageBase64("skip");
+            return;
+          }
+          const base64 = await FileSystem.readAsStringAsync(uri, {
             encoding: FileSystem.EncodingType.Base64,
           });
           setImageBase64(base64);
         }
       } catch (error) {
         console.error("Failed to load image as base64:", error);
+        setImageBase64("skip");
       }
     };
-    loadImageAsBase64();
+    
+    const timer = setTimeout(loadImageAsBase64, 100);
+    return () => clearTimeout(timer);
   }, [imageUri]);
 
   const analyzeMarkupMutation = useMutation({
@@ -116,8 +126,17 @@ export default function EditorScreen() {
 
   const handleAddAnnotation = async () => {
     if (!noteText.trim()) return;
-    if (!imageBase64) {
-      Alert.alert("Loading", "Please wait for the image to load");
+    if (!imageBase64 || imageBase64 === "skip") {
+      const fallbackAnnotation: Annotation = {
+        id: Date.now().toString(),
+        type: "text",
+        x: 20,
+        y: 30 + (annotations.length * 50),
+        text: noteText.trim(),
+      };
+      setAnnotations(prev => [...prev, fallbackAnnotation]);
+      setNoteText("");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       return;
     }
 
