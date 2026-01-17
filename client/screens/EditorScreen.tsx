@@ -21,6 +21,7 @@ import { Feather } from "@expo/vector-icons";
 import * as MediaLibrary from "expo-media-library";
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system";
+import { File } from "expo-file-system";
 import ViewShot from "react-native-view-shot";
 import Animated, {
   FadeInDown,
@@ -77,15 +78,14 @@ export default function EditorScreen() {
           };
           reader.readAsDataURL(blob);
         } else {
-          // Robust URI handling for native
+          // Robust URI handling for native using the new File API
           let uri = imageUri;
           if (!uri.startsWith("file://") && !uri.startsWith("content://") && !uri.startsWith("/")) {
             uri = `file://${uri}`;
           }
           
-          const base64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: "base64",
-          });
+          const file = new File(uri);
+          const base64 = await file.readAsBase64Async();
           setImageBase64(base64);
         }
       } catch (error) {
