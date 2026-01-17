@@ -202,10 +202,55 @@ export default function EditorScreen() {
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [noteText, setNoteText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
+  const [containerLayout, setContainerLayout] = useState({ width: 0, height: 0 });
+  const [sourceImageSize, setSourceImageSize] = useState({ width: 0, height: 0 });
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [clarification, setClarification] = useState<string | null>(null);
   const [pendingDescription, setPendingDescription] = useState<string>("");
+
+  // Calculate actual displayed image bounds within container (resizeMode="contain")
+  const getDisplayedImageBounds = () => {
+    if (!containerLayout.width || !containerLayout.height || !sourceImageSize.width || !sourceImageSize.height) {
+      return { width: containerLayout.width, height: containerLayout.height, offsetX: 0, offsetY: 0 };
+    }
+
+    const containerAspect = containerLayout.width / containerLayout.height;
+    const imageAspect = sourceImageSize.width / sourceImageSize.height;
+
+    let displayedWidth, displayedHeight, offsetX, offsetY;
+
+    if (imageAspect > containerAspect) {
+      // Image is wider than container - fits width, letterboxed top/bottom
+      displayedWidth = containerLayout.width;
+      displayedHeight = containerLayout.width / imageAspect;
+      offsetX = 0;
+      offsetY = (containerLayout.height - displayedHeight) / 2;
+    } else {
+      // Image is taller than container - fits height, pillarboxed left/right
+      displayedHeight = containerLayout.height;
+      displayedWidth = containerLayout.height * imageAspect;
+      offsetX = (containerLayout.width - displayedWidth) / 2;
+      offsetY = 0;
+    }
+
+    return { width: displayedWidth, height: displayedHeight, offsetX, offsetY };
+  };
+
+  const displayedImage = getDisplayedImageBounds();
+
+  // Get source image dimensions
+  useEffect(() => {
+    Image.getSize(
+      imageUri,
+      (width, height) => {
+        setSourceImageSize({ width, height });
+        console.log("Source image size:", width, height);
+      },
+      (error) => {
+        console.error("Failed to get image size:", error);
+      }
+    );
+  }, [imageUri]);
 
   useEffect(() => {
     const loadImageAsBase64 = async () => {
@@ -264,14 +309,18 @@ export default function EditorScreen() {
         throw new Error("Image not ready for AI analysis");
       }
 
+      // Use displayed image dimensions (after contain scaling)
+      const bounds = getDisplayedImageBounds();
+      console.log("Sending to AI - displayed image bounds:", bounds);
+
       const response = await fetch(new URL("/api/analyze-markup", getApiUrl()).toString(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           imageBase64,
           description,
-          imageWidth: imageLayout.width || 400,
-          imageHeight: imageLayout.height || 300,
+          imageWidth: Math.round(bounds.width) || 400,
+          imageHeight: Math.round(bounds.height) || 300,
         }),
       });
 
@@ -280,7 +329,18 @@ export default function EditorScreen() {
         throw new Error(errorData.error || "Failed to analyze markup");
       }
 
-      return response.json();
+      const result = await response.json();
+      
+      // Offset annotation coordinates to account for image position within container
+      if (result.annotations && Array.isArray(result.annotations)) {
+        result.annotations = result.annotations.map((ann: Annotation) => ({
+          ...ann,
+          x: ann.x + bounds.offsetX,
+          y: ann.y + bounds.offsetY,
+        }));
+      }
+
+      return result;
     },
   });
 
@@ -452,7 +512,8 @@ export default function EditorScreen() {
 
   const handleImageLayout = (event: any) => {
     const { width, height } = event.nativeEvent.layout;
-    setImageLayout({ width, height });
+    setContainerLayout({ width, height });
+    console.log("Container layout:", width, height);
   };
 
   React.useLayoutEffect(() => {
@@ -504,7 +565,7 @@ export default function EditorScreen() {
                   key={annotation.id}
                   annotation={annotation}
                   onPositionChange={handlePositionChange}
-                  imageLayout={imageLayout}
+                  imageLayout={containerLayout}
                 />
               ))}
             </View>

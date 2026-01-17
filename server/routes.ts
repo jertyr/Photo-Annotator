@@ -209,10 +209,13 @@ For measurements: The measurement line should span the ACTUAL width of the objec
       });
 
       const responseText = completion.choices[0]?.message?.content || "{}";
+      console.log("AI RAW RESPONSE:", responseText);
+      console.log("IMAGE DIMENSIONS:", { width, height });
       let result;
       
       try {
         result = JSON.parse(responseText);
+        console.log("PARSED ANNOTATIONS:", JSON.stringify(result.annotations, null, 2));
       } catch (parseError) {
         console.error("Failed to parse AI response:", responseText);
         result = {
