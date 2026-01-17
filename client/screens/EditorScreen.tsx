@@ -20,8 +20,7 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as MediaLibrary from "expo-media-library";
 import * as Haptics from "expo-haptics";
-import * as FileSystem from "expo-file-system";
-import { File } from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import ViewShot from "react-native-view-shot";
 import Animated, {
   FadeInDown,
@@ -78,14 +77,12 @@ export default function EditorScreen() {
           };
           reader.readAsDataURL(blob);
         } else {
-          // Robust URI handling for native using the new File API
+          // Use the legacy FileSystem API which is stable
           let uri = imageUri;
-          if (!uri.startsWith("file://") && !uri.startsWith("content://") && !uri.startsWith("/")) {
-            uri = `file://${uri}`;
-          }
           
-          const file = new File(uri);
-          const base64 = await file.readAsBase64Async();
+          const base64 = await FileSystem.readAsStringAsync(uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
           setImageBase64(base64);
         }
       } catch (error) {
