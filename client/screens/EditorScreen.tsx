@@ -228,19 +228,31 @@ export default function EditorScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
       if (viewShotRef.current?.capture) {
-        const uri = await viewShotRef.current.capture();
-        await MediaLibrary.saveToLibraryAsync(uri);
+        const uri = await viewShotRef.current.capture({
+          format: "jpg",
+          quality: 0.9,
+          result: "tmpfile"
+        });
+        
+        const asset = await MediaLibrary.createAssetAsync(uri);
+        await MediaLibrary.createAlbumAsync("MarkUp", asset, false);
         
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         
-        // Use a slight delay to ensure user sees success feedback before navigating
-        setTimeout(() => {
-          navigation.navigate("Home");
-        }, 300);
+        Alert.alert(
+          "Saved!",
+          "Photo saved to MarkUp album.",
+          [
+            { 
+              text: "Done", 
+              onPress: () => navigation.popToTop() 
+            },
+          ]
+        );
       }
     } catch (error) {
       console.error("Failed to save photo:", error);
-      Alert.alert("Error", "Failed to save photo. Please try again.");
+      Alert.alert("Error", "Failed to save photo: " + (error instanceof Error ? error.message : String(error)));
     } finally {
       setIsSaving(false);
     }
