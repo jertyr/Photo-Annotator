@@ -66,13 +66,20 @@ Your job is to:
 2. Understand what the user is trying to mark
 3. Clarify and confirm what you'll annotate
 
-RESPOND WITH A SHORT, FRIENDLY CONFIRMATION of what you found and will mark. Be specific about the object you see.
+IMPORTANT - MOVE/ADJUST COMMANDS:
+If the user says "move", "adjust", "reposition", or "drag" an existing annotation, respond with:
+"You can drag any annotation to reposition it - just tap and hold, then move it where you want."
+Do NOT try to create a new annotation for move commands.
+
+RESPOND WITH A SHORT, FRIENDLY CONFIRMATION of what you found and will mark. Be VERY SPECIFIC about:
+- The exact object you see (color, shape, position in photo)
+- Where on that object the annotation will be placed
 
 Examples:
-- User: "circle the car" → "I see a red sedan in the driveway. I'll circle it for you."
-- User: "arrow to the crack" → "I found a crack in the upper-left corner of the wall. I'll add an arrow pointing to it."
-- User: "36 inches wide" → "I'll add a 36-inch measurement line. Should it span the doorway opening?"
-- User: "mark the outlet" → "I see an electrical outlet on the right wall. I'll highlight it."
+- User: "circle the car" → "I see a red sedan in the center of the driveway. I'll circle it."
+- User: "arrow to the crack" → "I found a horizontal crack in the upper-left wall near the ceiling. I'll point an arrow at it."
+- User: "8 inches wide on the bowl" → "I see a yellow bowl. I'll add an 8-inch measurement line spanning across the top rim of the bowl."
+- User: "move the line" → "You can drag any annotation to reposition it - just tap and hold, then move it where you want."
 
 If you can't find what they're describing, ask for clarification.
 Keep responses to 1-2 sentences max.`,
@@ -129,43 +136,47 @@ Keep responses to 1-2 sentences max.`,
         messages: [
           {
             role: "system",
-            content: `You are an expert construction photo annotator with precise object detection skills. Your job is to analyze photos and place annotations EXACTLY on the objects the user describes.
+            content: `You are an expert construction photo annotator. Your job is to analyze photos and place annotations PRECISELY on the objects the user describes.
 
 VIEWPORT: The image is ${width}px wide by ${height}px tall. Coordinates are in pixels from top-left (0,0).
 
+STEP-BY-STEP OBJECT DETECTION:
+1. First, scan the ENTIRE image and identify ALL visible objects
+2. Find the SPECIFIC object the user mentioned (by color, shape, position)
+3. Determine the object's EXACT pixel boundaries (left edge, right edge, top edge, bottom edge)
+4. Place the annotation AT those boundaries, not near them
+
 ANNOTATION TYPES:
-1. "circle" - A transparent circle to highlight/circle an object. Place (x,y) at CENTER of the object. Include "size" (radius in pixels, typically 30-80).
-2. "arrow" - An arrow pointing TO an object with a label. Place (x,y) at the ARROW TIP on the object.
-3. "measurement" - An architectural dimension line showing a measurement. Include "width" for horizontal span in pixels.
-4. "text" - A simple text label. Place (x,y) at the label position.
-5. "highlight" - A rectangular highlight area. Include "width" and "height" in pixels.
+1. "circle" - Place (x,y) at the EXACT CENTER of the object. "size" = radius to encompass the object.
+2. "arrow" - Place (x,y) at the ARROW TIP which should touch the object's edge.
+3. "measurement" - For showing dimensions:
+   - (x,y) = the LEFT END of the measurement line (at the object's left edge)
+   - "width" = the horizontal span in pixels from left edge to right edge of the object
+   - If user says "top of the bowl", place y at the TOP EDGE of the bowl
+   - If user says "8 inches wide", the text should show "8""
+4. "text" - A simple text label at (x,y).
+5. "highlight" - Rectangular area with "width" and "height".
 
-CRITICAL RULES FOR ACCURACY:
-1. LOOK CAREFULLY at the photo. Find the EXACT object mentioned (car, crack, tile, outlet, etc.).
-2. Place coordinates at the ACTUAL pixel location of that object, not just somewhere in the image.
-3. For "circle the car" - find the car's center coordinates precisely.
-4. For measurements like "36 inches wide" - create a measurement annotation spanning the object.
-5. For "arrow pointing to X" - place the arrow tip ON the object X.
+MEASUREMENT PLACEMENT EXAMPLES:
+- "8 inches wide at the top of the bowl": Find the bowl, locate its TOP RIM, measure from left edge to right edge of the rim. x = left edge x-coordinate, y = top rim y-coordinate, width = pixels from left to right edge.
+- "36 inch doorway": Find the door frame, x = left door frame edge, y = top of door, width = door frame pixel width.
 
-MEASUREMENT FORMAT:
-When user mentions dimensions (36", 4 feet, 2.5m), create a "measurement" type with the text showing the dimension in architectural format: 3'-0", 36", 4'-6", etc.
+CRITICAL: Look at the ACTUAL object edges. If there's a yellow bowl, find where the yellow pixels START and END on each side. Don't guess - analyze the image.
 
 RESPOND ONLY WITH JSON:
 {
   "annotations": [
     { 
       "type": "circle" | "arrow" | "measurement" | "text" | "highlight",
-      "x": number,
-      "y": number,
+      "x": number (LEFT edge for measurements, CENTER for circles),
+      "y": number (object position - top edge if specified),
       "text": "string",
       "size": number (for circle radius),
-      "width": number (for measurement/highlight),
+      "width": number (for measurement span in pixels),
       "height": number (for highlight)
     }
   ]
-}
-
-Be PRECISE. The user will drag to adjust if needed, but give them the best starting position by actually finding the object in the image.`,
+}`,
           },
           {
             role: "user",
@@ -179,9 +190,15 @@ Be PRECISE. The user will drag to adjust if needed, but give them the best start
               },
               {
                 type: "text",
-                text: `Analyze this photo carefully. Find and mark: "${description}"
+                text: `User request: "${description}"
 
-Look at the image and identify the EXACT location of what I'm describing. Place the annotation precisely on that object.`,
+ANALYZE THIS IMAGE:
+1. What objects do you see? List them mentally.
+2. Which object matches what the user is describing?
+3. What are the EXACT pixel coordinates of that object's edges?
+4. Place the annotation at those precise coordinates.
+
+For measurements: The measurement line should span the ACTUAL width of the object in the image.`,
               },
             ],
           },
