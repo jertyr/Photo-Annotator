@@ -84,7 +84,7 @@ export default function EditorScreen() {
           }
           
           const base64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64,
+            encoding: "base64",
           });
           setImageBase64(base64);
         }
