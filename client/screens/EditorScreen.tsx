@@ -129,45 +129,63 @@ export default function EditorScreen() {
   const handleAddAnnotation = async () => {
     if (!noteText.trim()) return;
     
-    // If image loading failed or is still loading, use fallback
+    // Ensure we have the image base64, if not wait a bit or try to reload it
     if (!imageBase64 || imageBase64 === "failed") {
-      const fallbackAnnotation: Annotation = {
-        id: Date.now().toString(),
-        type: "text",
-        x: 50,
-        y: 50 + (annotations.length * 60),
-        text: noteText.trim(),
-      };
-      setAnnotations(prev => [...prev, fallbackAnnotation]);
-      setNoteText("");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert("Processing Image", "Please wait a moment while we prepare the image for AI analysis.");
       return;
     }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    try {
-      const result = await analyzeMarkupMutation.mutateAsync(noteText.trim());
-      
-      if (result.annotations && Array.isArray(result.annotations)) {
-        setAnnotations(prev => [...prev, ...result.annotations]);
-        setNoteText("");
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      } else {
-        throw new Error("Invalid AI response format");
+    const maxRetries = 2;
+    let attempt = 0;
+    let success = false;
+
+    while (attempt <= maxRetries && !success) {
+      try {
+        const result = await analyzeMarkupMutation.mutateAsync(noteText.trim());
+        
+        if (result.annotations && Array.isArray(result.annotations)) {
+          setAnnotations(prev => [...prev, ...result.annotations]);
+          setNoteText("");
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          success = true;
+        } else {
+          throw new Error("Invalid AI response format");
+        }
+      } catch (error) {
+        attempt++;
+        console.error(`AI analysis attempt ${attempt} failed:`, error);
+        
+        if (attempt <= maxRetries) {
+          // Wait a short bit before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } else {
+          Alert.alert(
+            "AI Analysis Failed",
+            "We couldn't analyze the photo after several attempts. Would you like to add it as a standard note instead?",
+            [
+              { text: "Try Again", onPress: () => handleAddAnnotation() },
+              { 
+                text: "Add as Note", 
+                onPress: () => {
+                  const fallbackAnnotation: Annotation = {
+                    id: Date.now().toString(),
+                    type: "text",
+                    x: 50,
+                    y: 50 + (annotations.length * 60),
+                    text: noteText.trim(),
+                  };
+                  setAnnotations(prev => [...prev, fallbackAnnotation]);
+                  setNoteText("");
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                }
+              },
+              { text: "Cancel", style: "cancel" }
+            ]
+          );
+        }
       }
-    } catch (error) {
-      console.error("AI analysis failed:", error);
-      const fallbackAnnotation: Annotation = {
-        id: Date.now().toString(),
-        type: "text",
-        x: 50,
-        y: 50 + (annotations.length * 60),
-        text: noteText.trim(),
-      };
-      setAnnotations(prev => [...prev, fallbackAnnotation]);
-      setNoteText("");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
   };
 
