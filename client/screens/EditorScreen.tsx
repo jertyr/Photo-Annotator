@@ -21,6 +21,7 @@ import { Feather } from "@expo/vector-icons";
 import * as MediaLibrary from "expo-media-library";
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 import ViewShot from "react-native-view-shot";
 import Animated, {
   FadeInDown,
@@ -196,31 +197,6 @@ export default function EditorScreen() {
     if (isSaving) return;
 
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      
-      if (status !== "granted") {
-        Alert.alert(
-          "Permission Required",
-          "MarkUp needs permission to save photos to your gallery.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { 
-              text: "Open Settings", 
-              onPress: () => {
-                if (Platform.OS !== "web") {
-                  try {
-                    Linking.openSettings();
-                  } catch (error) {
-                    // openSettings not supported
-                  }
-                }
-              }
-            },
-          ]
-        );
-        return;
-      }
-
       setIsSaving(true);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
@@ -230,22 +206,52 @@ export default function EditorScreen() {
           quality: 0.9,
           result: "tmpfile"
         });
-        
-        const asset = await MediaLibrary.createAssetAsync(uri);
-        await MediaLibrary.createAlbumAsync("MarkUp", asset, false);
-        
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        
-        Alert.alert(
-          "Saved!",
-          "Photo saved to MarkUp album.",
-          [
-            { 
-              text: "Done", 
-              onPress: () => navigation.popToTop() 
-            },
-          ]
-        );
+
+        if (Platform.OS === "web") {
+          // Web download fallback
+          const response = await fetch(uri);
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `markup-${Date.now()}.jpg`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+          
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          Alert.alert("Success", "Photo download started.");
+        } else {
+          try {
+            const { status } = await MediaLibrary.requestPermissionsAsync();
+            if (status === "granted") {
+              const asset = await MediaLibrary.createAssetAsync(uri);
+              await MediaLibrary.createAlbumAsync("MarkUp", asset, false);
+              
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              Alert.alert(
+                "Saved!",
+                "Photo saved to MarkUp album.",
+                [{ text: "Done", onPress: () => navigation.popToTop() }]
+              );
+            } else {
+              // Permission denied, use sharing as fallback
+              if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(uri);
+              } else {
+                throw new Error("Gallery permission denied and sharing unavailable.");
+              }
+            }
+          } catch (nativeError) {
+            console.error("Native save failed, trying sharing:", nativeError);
+            if (await Sharing.isAvailableAsync()) {
+              await Sharing.shareAsync(uri);
+            } else {
+              throw nativeError;
+            }
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to save photo:", error);
