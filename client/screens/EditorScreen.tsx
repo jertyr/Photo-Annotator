@@ -204,6 +204,8 @@ export default function EditorScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [clarification, setClarification] = useState<string | null>(null);
+  const [pendingDescription, setPendingDescription] = useState<string>("");
 
   useEffect(() => {
     const loadImageAsBase64 = async () => {
@@ -234,6 +236,28 @@ export default function EditorScreen() {
     return () => clearTimeout(timer);
   }, [imageUri]);
 
+  // Step 1: Clarify what the user wants (fast model)
+  const clarifyMutation = useMutation({
+    mutationFn: async (description: string) => {
+      if (!imageBase64 || imageBase64 === "failed") {
+        throw new Error("Image not ready");
+      }
+
+      const response = await fetch(new URL("/api/clarify-markup", getApiUrl()).toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64, description }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to clarify");
+      }
+
+      return response.json();
+    },
+  });
+
+  // Step 2: Generate annotations (vision model)
   const analyzeMarkupMutation = useMutation({
     mutationFn: async (description: string) => {
       if (!imageBase64 || imageBase64 === "failed") {
@@ -266,6 +290,7 @@ export default function EditorScreen() {
     );
   };
 
+  // Step 1: Ask for clarification first
   const handleAddAnnotation = async () => {
     if (!noteText.trim()) return;
 
@@ -276,17 +301,39 @@ export default function EditorScreen() {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+    try {
+      // First, get clarification from fast model
+      const clarifyResult = await clarifyMutation.mutateAsync(noteText.trim());
+      setClarification(clarifyResult.clarification);
+      setPendingDescription(noteText.trim());
+      setNoteText("");
+    } catch (error) {
+      console.error("Clarification failed:", error);
+      // Fallback: skip clarification and go straight to annotation
+      setPendingDescription(noteText.trim());
+      setClarification(`I'll mark: "${noteText.trim()}"`);
+      setNoteText("");
+    }
+  };
+
+  // Step 2: User confirms, generate annotations
+  const handleConfirmAnnotation = async () => {
+    if (!pendingDescription) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setClarification(null);
+
     const maxRetries = 2;
     let attempt = 0;
     let success = false;
 
     while (attempt <= maxRetries && !success) {
       try {
-        const result = await analyzeMarkupMutation.mutateAsync(noteText.trim());
+        const result = await analyzeMarkupMutation.mutateAsync(pendingDescription);
 
         if (result.annotations && Array.isArray(result.annotations)) {
           setAnnotations((prev) => [...prev, ...result.annotations]);
-          setNoteText("");
+          setPendingDescription("");
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           success = true;
         } else {
@@ -303,7 +350,7 @@ export default function EditorScreen() {
             "AI Analysis Failed",
             "Could not analyze the photo. Add as a note instead?",
             [
-              { text: "Try Again", onPress: () => handleAddAnnotation() },
+              { text: "Try Again", onPress: handleConfirmAnnotation },
               {
                 text: "Add as Note",
                 onPress: () => {
@@ -312,19 +359,25 @@ export default function EditorScreen() {
                     type: "text",
                     x: 50,
                     y: 50 + annotations.length * 60,
-                    text: noteText.trim(),
+                    text: pendingDescription,
                   };
                   setAnnotations((prev) => [...prev, fallbackAnnotation]);
-                  setNoteText("");
+                  setPendingDescription("");
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                 },
               },
-              { text: "Cancel", style: "cancel" },
+              { text: "Cancel", style: "cancel", onPress: () => setPendingDescription("") },
             ]
           );
         }
       }
     }
+  };
+
+  const handleCancelClarification = () => {
+    setClarification(null);
+    setPendingDescription("");
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const handleUndo = () => {
@@ -416,7 +469,7 @@ export default function EditorScreen() {
     });
   }, [navigation, isSaving]);
 
-  const isLoading = analyzeMarkupMutation.isPending;
+  const isLoading = analyzeMarkupMutation.isPending || clarifyMutation.isPending;
 
   return (
     <KeyboardAvoidingView
@@ -474,12 +527,44 @@ export default function EditorScreen() {
           },
         ]}
       >
-        <View style={styles.helpTextContainer}>
-          <Feather name="zap" size={14} color={AppColors.safetyOrange} />
-          <ThemedText style={styles.helpText}>
-            Examples: "Circle the car" or "Arrow to the crack" or "36 inches wide"
-          </ThemedText>
-        </View>
+        {clarification ? (
+          <View style={styles.clarificationCard}>
+            <View style={styles.clarificationHeader}>
+              <Feather name="message-circle" size={16} color={AppColors.safetyOrange} />
+              <ThemedText style={styles.clarificationTitle}>AI understood:</ThemedText>
+            </View>
+            <ThemedText style={styles.clarificationText}>{clarification}</ThemedText>
+            <View style={styles.clarificationButtons}>
+              <Pressable
+                style={styles.cancelButton}
+                onPress={handleCancelClarification}
+              >
+                <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+              </Pressable>
+              <Pressable
+                style={styles.confirmButton}
+                onPress={handleConfirmAnnotation}
+                disabled={analyzeMarkupMutation.isPending}
+              >
+                {analyzeMarkupMutation.isPending ? (
+                  <ActivityIndicator color={AppColors.white} size="small" />
+                ) : (
+                  <>
+                    <Feather name="check" size={16} color={AppColors.white} />
+                    <ThemedText style={styles.confirmButtonText}>Add Markup</ThemedText>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.helpTextContainer}>
+            <Feather name="zap" size={14} color={AppColors.safetyOrange} />
+            <ThemedText style={styles.helpText}>
+              Examples: "Circle the car" or "Arrow to the crack" or "36 inches wide"
+            </ThemedText>
+          </View>
+        )}
 
         <View style={styles.inputRow}>
           <View
@@ -594,6 +679,63 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: AppColors.textSecondary,
     flex: 1,
+  },
+  clarificationCard: {
+    backgroundColor: "rgba(255, 107, 53, 0.08)",
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: "rgba(255, 107, 53, 0.3)",
+  },
+  clarificationHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
+  clarificationTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: AppColors.safetyOrange,
+  },
+  clarificationText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: AppColors.charcoal,
+    marginBottom: Spacing.md,
+  },
+  clarificationButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: Spacing.sm,
+  },
+  cancelButton: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: AppColors.concreteGray,
+  },
+  cancelButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: AppColors.charcoal,
+  },
+  confirmButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: AppColors.safetyOrange,
+    minWidth: 110,
+    justifyContent: "center",
+  },
+  confirmButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: AppColors.white,
   },
   inputRow: {
     flexDirection: "row",

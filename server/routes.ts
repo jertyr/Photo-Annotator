@@ -45,6 +45,74 @@ Keep it brief - these are annotations for photos, not paragraphs.`,
     }
   });
 
+  // Step 1: Clarify what the user wants to mark (fast model)
+  app.post("/api/clarify-markup", async (req, res) => {
+    try {
+      const { imageBase64, description } = req.body;
+
+      if (!imageBase64 || !description) {
+        return res.status(400).json({ error: "Image and description are required" });
+      }
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4.1-nano",
+        messages: [
+          {
+            role: "system",
+            content: `You are a helpful assistant for a construction photo annotation app. The user will show you a photo and describe what they want to mark up.
+
+Your job is to:
+1. Look at the photo carefully
+2. Understand what the user is trying to mark
+3. Clarify and confirm what you'll annotate
+
+RESPOND WITH A SHORT, FRIENDLY CONFIRMATION of what you found and will mark. Be specific about the object you see.
+
+Examples:
+- User: "circle the car" → "I see a red sedan in the driveway. I'll circle it for you."
+- User: "arrow to the crack" → "I found a crack in the upper-left corner of the wall. I'll add an arrow pointing to it."
+- User: "36 inches wide" → "I'll add a 36-inch measurement line. Should it span the doorway opening?"
+- User: "mark the outlet" → "I see an electrical outlet on the right wall. I'll highlight it."
+
+If you can't find what they're describing, ask for clarification.
+Keep responses to 1-2 sentences max.`,
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:image/jpeg;base64,${imageBase64}`,
+                  detail: "low",
+                },
+              },
+              {
+                type: "text",
+                text: description,
+              },
+            ],
+          },
+        ],
+        max_completion_tokens: 100,
+        temperature: 0.3,
+      });
+
+      const clarification = completion.choices[0]?.message?.content?.trim() || 
+        `I'll mark: "${description}"`;
+
+      res.json({ clarification, original: description });
+    } catch (error) {
+      console.error("Error clarifying markup:", error);
+      // Fallback - just echo back
+      res.json({ 
+        clarification: `I'll mark: "${req.body.description}"`, 
+        original: req.body.description 
+      });
+    }
+  });
+
+  // Step 2: Generate the actual annotations (vision model)
   app.post("/api/analyze-markup", async (req, res) => {
     try {
       const { imageBase64, description, imageWidth, imageHeight } = req.body;
