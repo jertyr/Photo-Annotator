@@ -34,16 +34,18 @@ decide what to write next. Keep it current: as interests shift, edit this file.
 Next up, roughly in order. The Routine should pick the top unused item that keeps
 the 70/30 balance, then move it to "Done" below. Add new ideas anytime.
 
-- [close] Data informatics: how a construction firm's own numbers (bids, change orders, cycle times) become forecasting.
-- [close] Industry benchmarking: what "good" margins and revenue-per-employee look like across construction vs. software vs. manufacturing vs. services.
 - [close] History of the nail, the screw, and the fastener, and how they changed building.
 - [close] Cycling: the science of training zones, FTP, and what the power data actually tells you.
 - [close] Nutrition: protein timing and the actual evidence base for the "1g per pound" rule.
-- [wild] Latin, part 1: why a dead language refuses to die, and the first words worth knowing.
 - [wild] The Antikythera mechanism and ancient analog computing.
 - [close] The economic history of the American housing cycle and what drives boom/bust in residential construction.
 - [wild] How medieval cathedrals were financed and project-managed.
 - [close] Concrete: the Roman recipe, why it lasted, and what modern concrete traded away.
+- [wild] Latin, part 2: verbs, cases, and how to read a real sentence.
+- [close] The economics of the skilled-trades labor shortage and what it does to wages and bids.
 
 ## Done
 - [close] 0001 The Grain of a Nation — history of wood, lumber, and logging in America.
+- [close] 0002 Your Numbers Are Talking — data informatics for a construction firm.
+- [close] 0003 A Tale of Three Industries — margins and revenue per employee across sectors.
+- [wild] 0004 The Language That Refused to Die — Latin, part 1.
