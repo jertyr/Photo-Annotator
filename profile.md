@@ -34,16 +34,33 @@ decide what to write next. Keep it current: as interests shift, edit this file.
 Next up, roughly in order. The Routine should pick the top unused item that keeps
 the 70/30 balance, then move it to "Done" below. Add new ideas anytime.
 
+- [close] Endurance running: what actually happens to the body across the marathon distance
+  and beyond, how elite runners really train, and what does and does not carry over from
+  cycling. Ultra events and the physiology of the wall are fair game.
+- [close] Cold storage: how refrigerated warehousing became one of the hottest and most
+  technical construction niches, the rules that govern it (food safety, ammonia refrigeration
+  and process safety, envelope and vapor barrier requirements), and the economics of the
+  business itself. Who builds these, who owns them, and what the returns look like.
 - [close] Data informatics: how a construction firm's own numbers (bids, change orders, cycle times) become forecasting.
 - [close] Industry benchmarking: what "good" margins and revenue-per-employee look like across construction vs. software vs. manufacturing vs. services.
 - [close] History of the nail, the screw, and the fastener, and how they changed building.
 - [close] Cycling: the science of training zones, FTP, and what the power data actually tells you.
 - [close] Nutrition: protein timing and the actual evidence base for the "1g per pound" rule.
-- [wild] Latin, part 1: why a dead language refuses to die, and the first words worth knowing.
 - [wild] The Antikythera mechanism and ancient analog computing.
 - [close] The economic history of the American housing cycle and what drives boom/bust in residential construction.
 - [wild] How medieval cathedrals were financed and project-managed.
 - [close] Concrete: the Roman recipe, why it lasted, and what modern concrete traded away.
+- [wild] Latin, part 2: how the case system works, and why it makes legal and scientific
+  writing behave the way it does. (Direct sequel to 0002; the listener asked for a mini-series.)
+- [close] The skilled-trades labor pipeline: where carpenters actually come from now, and what
+  the demographic math says about the next fifteen years.
+- [wild] How the shipping container rewrote global trade, and what it did to the cost of everything.
 
 ## Done
 - [close] 0001 The Grain of a Nation — history of wood, lumber, and logging in America.
+- [wild] 0002 The Language That Refuses to Die — Latin, part one.
+
+## Feedback signals
+`feedback.md` is the running record of what actually landed. Read it on every run,
+alongside this file, and let it override the queue order when the two disagree.
+The listener's reactions are stronger evidence than a topic idea written months ago.

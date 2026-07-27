@@ -15,6 +15,9 @@
   var app = document.getElementById("app");
   var TTS = ("speechSynthesis" in window) && ("SpeechSynthesisUtterance" in window);
 
+  var REPO = "jertyr/Photo-Annotator";   // where feedback issues get filed
+  var FB_KEY = "tangents.feedback";
+
   /* ---------- tiny markdown -> HTML with sentence spans ---------- */
 
   function escapeHtml(s) {
@@ -61,6 +64,110 @@
     return html;
   }
 
+  /* ---------- feedback ----------
+     Reactions are kept in localStorage so the site stays static. Sending them
+     opens a pre-filled GitHub issue titled "[feedback] ...", which the research
+     Routine reads on its next run and folds into feedback.md. That is the whole
+     loop: react here, one tap to file, next episode knows about it. */
+
+  var RATING_LABEL = { more: "More of this", ok: "Fine", less: "Not for me" };
+
+  function loadFeedback() {
+    try { return JSON.parse(localStorage.getItem(FB_KEY) || "[]"); }
+    catch (e) { return []; }
+  }
+  function saveFeedback(list) {
+    try { localStorage.setItem(FB_KEY, JSON.stringify(list)); } catch (e) { /* private mode */ }
+  }
+  function pendingFeedback() {
+    return loadFeedback().filter(function (f) { return !f.sent; });
+  }
+  function ratingFor(id) {
+    var hits = loadFeedback().filter(function (f) { return f.ep === id && f.rating; });
+    return hits.length ? hits[hits.length - 1].rating : null;
+  }
+  function recordFeedback(entry) {
+    var list = loadFeedback();
+    if (entry.rating) {
+      // one live rating per episode; a new one replaces an unsent earlier one
+      list = list.filter(function (f) {
+        return !(f.ep === entry.ep && f.rating && !f.sent);
+      });
+    }
+    entry.at = new Date().toISOString().slice(0, 10);
+    list.push(entry);
+    saveFeedback(list);
+  }
+  function markAllSent() {
+    var list = loadFeedback();
+    list.forEach(function (f) { f.sent = true; });
+    saveFeedback(list);
+  }
+  function unmarkAllSent() {
+    var list = loadFeedback();
+    list.forEach(function (f) { delete f.sent; });
+    saveFeedback(list);
+  }
+
+  function feedbackIssueUrl() {
+    var items = pendingFeedback();
+    if (!items.length) return null;
+    var lines = ["Sent from the Tangents reader.", ""];
+    items.forEach(function (f) {
+      var ep = f.ep && byId[f.ep];
+      var where = ep ? ep.title : "general";
+      if (f.rating) lines.push("- **" + RATING_LABEL[f.rating] + "** on _" + where + "_ (" + f.at + ")");
+      if (f.note) lines.push("- **Request** from _" + where + "_ (" + f.at + "): " + f.note);
+    });
+    var title = "[feedback] " + items.length + " item" + (items.length === 1 ? "" : "s") + " from the reader";
+    return "https://github.com/" + REPO + "/issues/new?title=" +
+      encodeURIComponent(title) + "&body=" + encodeURIComponent(lines.join("\n"));
+  }
+
+  function renderSendStrip(el) {
+    if (!el) return;
+    var n = pendingFeedback().length;
+    if (!n) { el.innerHTML = ""; return; }
+    el.innerHTML =
+      '<a class="fb-link" id="fbGo" href="#">Send ' + n + " item" + (n === 1 ? "" : "s") +
+        " to Tangents &#8594;</a>" +
+      '<p class="fb-hint">Opens a pre-filled GitHub issue. Submitting it is what feeds the next episode.</p>';
+    el.querySelector("#fbGo").onclick = function (e) {
+      e.preventDefault();
+      var url = feedbackIssueUrl();
+      if (!url) return;
+      window.open(url, "_blank", "noopener");
+      markAllSent();
+      el.innerHTML = '<p class="fb-hint">Opened GitHub. ' +
+        '<a href="#" id="fbUndo">Did not submit it? Put it back.</a></p>';
+      el.querySelector("#fbUndo").onclick = function (ev) {
+        ev.preventDefault();
+        unmarkAllSent();
+        renderSendStrip(el);
+      };
+    };
+  }
+
+  function noteBox(taId, btnId, statusId, label) {
+    return '<textarea id="' + taId + '" class="fb-note" rows="2" placeholder="' + label + '"></textarea>' +
+      '<div class="fb-actions"><button class="fb-save" id="' + btnId + '">Add</button>' +
+      '<span class="fb-status" id="' + statusId + '"></span></div>';
+  }
+
+  function wireNoteBox(taId, btnId, statusId, epId, sendEl) {
+    var btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.onclick = function () {
+      var ta = document.getElementById(taId);
+      var v = (ta.value || "").trim();
+      if (!v) return;
+      recordFeedback({ ep: epId, note: v });
+      ta.value = "";
+      document.getElementById(statusId).textContent = "Saved.";
+      renderSendStrip(sendEl);
+    };
+  }
+
   /* ---------- views ---------- */
 
   var activeFilter = "all";
@@ -105,7 +212,13 @@
         filterBtn("close", "In your wheelhouse") +
         filterBtn("wild", "Wild cards") +
       "</div>" +
-      (cards || '<p class="empty">No episodes here yet. New ones arrive automatically.</p>');
+      (cards || '<p class="empty">No episodes here yet. New ones arrive automatically.</p>') +
+      '<div class="feedback lib-feedback">' +
+        "<h3>Want something specific?</h3>" +
+        '<p class="fb-lead">Anything you add here steers what gets written next.</p>' +
+        noteBox("ideaNote", "ideaSave", "ideaStatus", "A topic you want an episode on.") +
+        '<div class="fb-send" id="fbSend"></div>' +
+      "</div>";
 
     Array.prototype.forEach.call(app.querySelectorAll(".filter-btn"), function (b) {
       b.onclick = function () { activeFilter = b.getAttribute("data-f"); renderLibrary(); };
@@ -113,6 +226,10 @@
     Array.prototype.forEach.call(app.querySelectorAll(".card"), function (c) {
       c.onclick = function () { location.hash = "#/ep/" + c.getAttribute("data-go"); };
     });
+
+    var sendEl = document.getElementById("fbSend");
+    wireNoteBox("ideaNote", "ideaSave", "ideaStatus", null, sendEl);
+    renderSendStrip(sendEl);
   }
 
   function filterBtn(val, label) {
@@ -143,11 +260,45 @@
           (ep.topics || []).map(escapeHtml).join(", ") + "</p>" +
       "</div>" +
       '<div class="article" id="article">' + renderArticle(ep.body) + "</div>" +
-      sourcesHtml;
+      sourcesHtml +
+      feedbackPanel(ep);
 
     document.getElementById("back").onclick = function () { location.hash = "#/"; };
     window.scrollTo(0, 0);
+    wireFeedbackPanel(ep);
     setupSpeech(ep);
+  }
+
+  function feedbackPanel(ep) {
+    var current = ratingFor(ep.id);
+    function btn(val) {
+      return '<button class="fb-btn' + (current === val ? " on" : "") + '" data-r="' + val + '">' +
+        RATING_LABEL[val] + "</button>";
+    }
+    return '<div class="feedback" id="feedback">' +
+      "<h3>Was this one for you?</h3>" +
+      '<div class="fb-row">' + btn("more") + btn("ok") + btn("less") + "</div>" +
+      noteBox("fbNote", "fbSave", "fbStatus", "Want a follow-up, or something else entirely? Say so here.") +
+      '<div class="fb-send" id="fbSend"></div>' +
+    "</div>";
+  }
+
+  function wireFeedbackPanel(ep) {
+    var box = document.getElementById("feedback");
+    if (!box) return;
+    var sendEl = document.getElementById("fbSend");
+    var btns = box.querySelectorAll(".fb-btn");
+    Array.prototype.forEach.call(btns, function (b) {
+      b.onclick = function () {
+        recordFeedback({ ep: ep.id, rating: b.getAttribute("data-r") });
+        Array.prototype.forEach.call(btns, function (o) { o.classList.remove("on"); });
+        b.classList.add("on");
+        document.getElementById("fbStatus").textContent = "Saved.";
+        renderSendStrip(sendEl);
+      };
+    });
+    wireNoteBox("fbNote", "fbSave", "fbStatus", ep.id, sendEl);
+    renderSendStrip(sendEl);
   }
 
   /* ---------- speech engine ---------- */
