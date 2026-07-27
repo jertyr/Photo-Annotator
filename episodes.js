@@ -71,3 +71,112 @@ So the modern stud is the sum of all of this. It is dimensional because Herbert 
 The next time you frame a wall, you are performing a technique that is almost two hundred years old, with a material shaped by a century of hard lessons about running out. The wood remembers all of it. It is worth knowing what it remembers.
 `
 });
+
+window.EPISODES.push({
+  id: "0002-the-language-that-refuses-to-die",
+  title: "The Language That Refuses to Die",
+  subtitle: "Latin, part one: why a dead tongue still runs the world",
+  date: "2026-07-27",
+  category: "wild", // "close" (near your interests) or "wild" (a stretch)
+  topics: ["latin", "language", "history"],
+  readingTimeMin: 16,
+  summary: "Latin has had no native speakers for well over a thousand years, and it still shows up in your contracts, your doctor's notes, and the word you use for a wall that is out of square. The story of how a language died and kept working anyway.",
+  sources: [
+    { title: "Britannica: Latin language", url: "https://www.britannica.com/topic/Latin-language" },
+    { title: "Latin influence in English (Wikipedia)", url: "https://en.wikipedia.org/wiki/Latin_influence_in_English" },
+    { title: "Britannica: Carolus Linnaeus", url: "https://www.britannica.com/biography/Carolus-Linnaeus" },
+    { title: "Systema Naturae (Wikipedia)", url: "https://en.wikipedia.org/wiki/Systema_Naturae" },
+    { title: "Nuntii Latini (Wikipedia)", url: "https://en.wikipedia.org/wiki/Nuntii_Latini" },
+    { title: "RTÉ: Finnish broadcaster ends Latin news bulletins", url: "https://www.rte.ie/news/world/2019/0624/1057298-latin/" }
+  ],
+  body: `Walk a jobsite and listen to what people actually say. Somebody is going to tell you a wall is out of plumb. Somebody is going to complain about the change order. Somebody is going to say the framing looks normal, or that the punch list is enormous, or that the whole structure needs to be square before the drywall goes on.
+
+Every one of those words is Latin. Not Latin-flavored. Latin, carried into English across two thousand years and several empires, and still doing the exact job it was built to do. The people using them have mostly never studied a word of it, and that is the strange part. Latin is called a dead language. It has had no native speakers for something on the order of fifteen hundred years. And it never stopped working.
+
+This is the story of how that happened, and it is a much better story than the one they tell you in school.
+
+## Nobody killed Latin
+
+Start with the thing that trips everybody up. Latin did not die the way a language usually dies, which is that the last person who speaks it stops breathing. Latin died because it split in two, and only one of the halves was allowed to change.
+
+The oldest scrap of Latin anybody has found is a short inscription that dates to roughly the seventh century BCE, scratched on a small metal pin, written in Greek characters because Latin did not yet have an alphabet of its own. At that point it was a local dialect spoken by farmers along the lower Tiber River. It had no particular future. There were dozens of languages on the Italian peninsula and Latin was not the impressive one.
+
+Then Rome happened, and Latin went where the legions went, which was most of western Europe and a wide band of North Africa.
+
+But by the time the empire was at its height there were effectively two Latins running side by side. There was the polished literary register, the Latin of Cicero and Virgil, taught in schools and used for anything meant to last. And there was the Latin that everybody actually spoke: soldiers, bricklayers, merchants, farmers. Scholars call that second one Vulgar Latin, and the word vulgar there just means common, as in of the crowd. No insult intended.
+
+Those two drifted apart slowly, the way spoken and written English drift apart today. Then the western empire came apart in the fifth century, and the drift became a rupture. Roads decayed. Trade shrank. The long-distance connections that had kept everybody's speech roughly aligned thinned out, and each region's spoken Latin started going its own way with nothing to pull it back. Give that process a few centuries and the spoken Latin of Iberia becomes Spanish and Portuguese, the spoken Latin of Gaul becomes French, the spoken Latin of Italy becomes Italian, and a pocket of it far to the east becomes Romanian.
+
+There is a wonderfully specific moment where you can see the break become official. In the year 813, a church council at Tours instructed priests to stop preaching in Latin and start preaching in the local rustic tongue, because ordinary people in the pews could no longer follow the sermon. That is the institution admitting, in writing, that the language of the service and the language of the street had become two different things. By the ninth century, documents start appearing that are unmistakably early French rather than bad Latin.
+
+So here is what actually happened. Vulgar Latin never died at all. It just changed its name five or six times and is spoken today by something north of eight hundred million people. What died was the frozen half. Classical Latin stopped being anybody's first language, which meant it stopped changing, which is the linguistic definition of death. And that turned out to be its greatest professional asset.
+
+## The advantage of being frozen
+
+Think about what a stable language is worth.
+
+If you write a technical specification in a living language, the language moves underneath it. Words shift meaning. A document written in English in 1620 is readable today but tricky, and one written in 1350 is essentially a foreign language. That is a real problem if your document is supposed to still mean the same thing in four hundred years.
+
+Latin had stopped moving. And so, for well over a thousand years, everybody in Europe with a serious idea to record wrote it in Latin, not because they were showing off, but because Latin was the only medium that would hold still. A scholar in Krakow and a scholar in Lisbon could read each other perfectly while being unable to order lunch in each other's cities. Latin was the internet protocol of the medieval and early modern world: nobody's native tongue, everybody's common one.
+
+The list of what got written in this dead language is genuinely startling. Isaac Newton published the Principia in Latin in 1687, laying out the laws of motion and universal gravitation. That is not the Middle Ages. That is the same decade the English were settling Pennsylvania. Copernicus, Kepler, Descartes, Spinoza, Gauss: all Latin. The Roman Catholic Church ran its liturgy in Latin until the reforms of the 1960s, meaning your grandparents may well have sat through a weekly service in a language nobody had spoken natively since the fall of Rome.
+
+And then there is the quiet takeover of English, which is where this starts to touch your daily life.
+
+## The long raid on English vocabulary
+
+English is a Germanic language. Its bones are Germanic. The words you learned first and use most are Germanic: house, wood, nail, wall, roof, work, hand.
+
+But English has been on the receiving end of an eleven-hundred-year vocabulary raid. The Norman conquest of 1066 put a French-speaking ruling class on top of an English-speaking country, and French is Latin's daughter. So the law, the court, the church, and the aristocracy all started operating in a Latin-derived vocabulary while the people doing the actual labor kept the Germanic one. Then the Renaissance brought a second wave, when scholars pulled words directly out of classical Latin to fill gaps they felt English had.
+
+Etymologists who have counted this find something remarkable. In one widely cited analysis of English vocabulary by source language, French accounts for roughly 28 percent of the words and Latin for roughly another 28 percent, which puts the Latin-descended share of the English dictionary at well over half. Narrow it to scientific and technical vocabulary and the Greek and Latin share climbs past 90 percent.
+
+You can hear the split in pairs of words that mean nearly the same thing but sit at different altitudes. A house is Germanic; a residence is Latin. You can ask, which is Germanic, or inquire, which is Latin. Something can be deep or profound. You can build or you can construct. Notice which half sounds like the office and which half sounds like the field. That is not an accident of taste. That is the Norman conquest, still audible a thousand years later, in the difference between a job and an occupation.
+
+## Two dead-language monopolies that never ended
+
+Two professions locked Latin in so thoroughly that they have never gotten it out, and both had good reasons.
+
+The first is law. English common law took shape while the courts, the church, and the universities all ran on Latin, and the terms it minted then are still load-bearing. Habeas corpus translates literally as you shall have the body, and it is the mechanism that forces a court to justify holding someone. Mens rea, the guilty mind, defines whether a criminal act was intentional. Per curiam marks an opinion issued by a court collectively rather than signed by one judge.
+
+Lawyers keep these not out of nostalgia but because centuries of case law have already argued out exactly what they mean. Replacing habeas corpus with a plain English phrase would not clarify anything. It would detonate the precedent attached to the old phrase and start the argument over. The Latin term is a compressed pointer to a thousand years of reasoning, and that is worth more than accessibility.
+
+The second is the naming of living things, and this one has a hero.
+
+Before the eighteenth century, naming a species was chaos. A plant might be identified by a long descriptive Latin phrase running a dozen words, and two different botanists would happily write two completely different phrases for the same plant. There was no index and no agreement. Then a Swede named Carl Linnaeus published Systema Naturae in 1735 and proposed something almost aggressively simple: every organism gets exactly two words, a genus and a species. Homo sapiens. Quercus alba, the white oak. Pseudotsuga menziesii, which is the Douglas fir on your lumber tag.
+
+The tenth edition of 1758, where he applied the system fully to animals, is still the formal starting point for zoological naming today. And he wrote it in Latin for the obvious reason: he needed a name that would mean the same thing to a Swede, a Frenchman, a Russian, and a Japanese botanist two centuries later, and the only language that could promise that was one that had stopped changing. A biologist in Chile and a biologist in Norway can disagree about everything and still know precisely which oak they are arguing about.
+
+## The last broadcast
+
+Here is my favorite piece of evidence that Latin never fully agreed to be dead.
+
+In September of 1989, the Finnish national broadcaster Yle started airing a weekly five-minute news bulletin covering current world events, read aloud, entirely in Latin. It was called Nuntii Latini, which simply means the Latin news. It was founded by a Latin professor named Tuomo Pekkanen, and each broadcast came with a small glossary translating the trickiest terms into Finnish, English, and German, because the ancient Romans had left no word for things like a computer virus.
+
+It was not a novelty segment. It ran for thirty years. At its height the BBC reported around 75,000 listeners, and by 2019 it still had roughly 40,000 people around the world tuning in to hear the news of the day in the language of the Roman Republic. When Yle announced in 2017 that it planned to cancel the program, Latinists in multiple countries protested hard enough that the broadcaster relented and kept it on the air until its thirtieth anniversary. The last bulletin aired on the fourteenth of June, 2019.
+
+A dead language with a global weekly news audience and an organized fanbase willing to fight a national broadcaster for it. That is not how dead things behave.
+
+## The first words worth knowing
+
+If you are going to start somewhere, start with the words that are already in your hands. This is the part I think you will enjoy most, because the trade you work in is one of the most heavily Latin corners of English there is, and the etymologies are not decoration. They are descriptions of the tools.
+
+Norma was a carpenter's square. From it comes normalis, meaning made according to the square, true, correct. That is the ancestor of our word normal. And the Latin enormis meant out of the square, off true, irregular, which is where we get enormous. When you say a wall is not normal, you are unknowingly saying it is not square, which is very likely exactly what you mean.
+
+Plumbum was the Latin word for lead, the metal. A weighted string used to find true vertical had a lead bob on the end of it, so the whole operation took the metal's name. That is why we say plumb, and why a plumber is named after the lead pipe, and why the chemical symbol for lead is Pb.
+
+Libra was a balance or a set of scales, and its diminutive libella was a small level. That gives us level, and it also gives us the pound abbreviation lb, and the balance scales of the zodiac sign.
+
+Caementum meant rough quarried stone chips, the aggregate you mixed into Roman mortar. It gives us cement. Mortarium was the bowl you mixed it in, which gives us mortar. Struere meant to pile up; construere meant to pile together, which gives us construction, and destruere, to pull the pile apart, gives us destruction. Fabrica was a workshop, which gives us fabricate. Aedificare meant to build, which gives us edifice. Regula was a straightedge, which gives us rule, regular, and regulate.
+
+So when you tell a crew to check that the construction is level, plumb, and square before the cement goes down, roughly every load-bearing word in that sentence came off a Roman jobsite. The Romans were the best builders in the ancient world, they left the vocabulary lying around, and English picked it up and never put it back.
+
+That is not a bad first vocabulary list. It is not amo, amas, amat. It is the words you already say fifty times a day without knowing you inherited them.
+
+## Where this goes next
+
+In part two we will get into the actual machinery, which is where Latin earns its reputation for difficulty and also where it gets interesting. Latin does not rely much on word order. It relies on endings, so a noun changes shape depending on the job it is doing in the sentence, which means you can scramble a Latin sentence almost at will and it still means exactly one thing. It is a language built for precision over convenience. Once you see how that machine works, a lot of things about legal writing and scientific naming suddenly make sense.
+
+For now, the takeaway is this. Latin did not survive because anybody preserved it out of sentiment. It survived because it was useful in a very specific way: it held still while everything around it moved. In a world of drifting meanings, a language that cannot drift is a kind of infrastructure. And infrastructure, as you know better than most, is the stuff nobody notices until they try to work without it.
+`
+});

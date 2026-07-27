@@ -19,10 +19,26 @@ Built as a plain static site: no framework, no build step, no server.
   an episode and hit play. The player uses your browser's built-in
   text-to-speech, with adjustable voice and speed, sentence highlighting, and
   scrub controls. Works on phone and desktop.
+- **`feedback.md`** is the running record of what actually landed. It outranks the
+  topic queue when the two disagree.
 - **The research Routine** (a scheduled Claude Code trigger) wakes on a cadence,
-  reads `profile.md`, picks the next topic while keeping the 70/30 balance,
-  researches it on the web, writes a new episode into `episodes.js`, moves the
-  topic to Done, and commits.
+  reads `profile.md` and `feedback.md`, picks the next topic while keeping the
+  70/30 balance, researches it on the web, writes a new episode into `episodes.js`,
+  moves the topic to Done, and commits.
+
+## The feedback loop
+
+The site is static, so there is no server to post to. The loop works like this:
+
+1. In the reader, rate an episode ("More of this" / "Fine" / "Not for me") or type
+   a request into the box. On the library page there is a box for topic ideas that
+   are not tied to any episode. Everything is held in `localStorage`.
+2. Tap **Send N items to Tangents**. That opens a GitHub issue pre-filled with your
+   reactions, titled `[feedback] ...`. Submit it. That is the whole ask.
+3. On its next run, the Routine reads open `[feedback]` issues, folds them into
+   `feedback.md`, closes them, and weights its topic choice accordingly.
+
+You can skip the app entirely and just edit `feedback.md` by hand. Same effect.
 
 ## Reading / listening
 
