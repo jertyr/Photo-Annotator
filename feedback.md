@@ -54,6 +54,11 @@ Reactions to length, voice, pacing, or the reading experience rather than topic.
 ## Log
 Dated record of what came in and what was done about it.
 
+- 2026-07-28: Stripped the tie-back endings from all five published episodes, then
+  rewrote 0004 and 0005 outright. Those two were not just tie-backs at the end; they were
+  advice to the listener from first line to last, and both sat under the 800 word floor.
+  0004 is now the history of the leading indicator, 0005 is Baumol's cost disease and the
+  construction productivity decline. 611 and 669 words became 1,345 and 1,339.
 - 2026-07-28: Listener asked for standalone episodes, with no forced tie back to
   construction or the day job. Recorded under Notes on format and added as a rule in
   `profile.md` so it binds at writing time. Existing episodes were left alone; the rule
