@@ -180,3 +180,63 @@ In part two we will get into the actual machinery, which is where Latin earns it
 For now, the takeaway is this. Latin did not survive because anybody preserved it out of sentiment. It survived because it was useful in a very specific way: it held still while everything around it moved. In a world of drifting meanings, a language that cannot drift is a kind of infrastructure. And infrastructure, as you know better than most, is the stuff nobody notices until they try to work without it.
 `
 });
+window.EPISODES.push({
+  id: "0003-into-the-pain-cave",
+  title: "Into the Pain Cave",
+  subtitle: "Courtney Dauwalter, and why the marathon wall stops being the point past mile 100",
+  date: "2026-07-27",
+  category: "close", // "close" (near your interests) or "wild" (a stretch)
+  topics: ["ultrarunning", "endurance physiology", "cycling", "sports science"],
+  readingTimeMin: 12,
+  summary: "In 2017 a Colorado science teacher won a 240 mile race outright, beating every man in the field by ten hours. Her career, and the real physiology behind it, explains why the rules of endurance stop working the way you'd expect once a race gets long enough.",
+  sources: [
+    { title: "Courtney Dauwalter (Wikipedia)", url: "https://en.wikipedia.org/wiki/Courtney_Dauwalter" },
+    { title: "How Courtney Dauwalter Won the Moab 240 Outright (Trail Runner)", url: "https://www.trailrunnermag.com/people/news/courtney-dauwalter-wins-moab-240/" },
+    { title: "Courtney Destroys the Western States 100 Course Record (Salomon)", url: "https://www.salomon.com/en-us/courtney-dauwalter-record-western-states-100-2023" },
+    { title: "Courtney Dauwalter Runs 283.3 Miles, Setting Big Dog's Backyard Ultra Records (GearJunkie)", url: "https://gearjunkie.com/adventure/big-dogs-backyard-ultra-dauwalter" },
+    { title: "Physiology and Pathophysiology in Ultra-Marathon Running (Frontiers in Physiology, 2018)", url: "https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2018.00634/full" },
+    { title: "Women Reduce the Performance Difference to Men with Increasing Age in Ultra-Marathon Running (PMC)", url: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6651135/" }
+  ],
+  body: `At mile 200 of the Moab 240, somewhere out in the slickrock canyons of southeastern Utah, a middle school science teacher from Colorado was running alone in the dark, more than ten hours ahead of the nearest man. It was October of 2017, the very first running of the race, and Courtney Dauwalter was not just winning the women's field. She was winning the whole thing outright, against every man in a 240 mile ultramarathon, by a margin so large that the second place finisher would not cross the line until the next afternoon.
+
+That result should not make sense if you think about running the way most people do, as a sport where the fastest man is always faster than the fastest woman. It makes a great deal of sense once you understand what actually happens to a human body somewhere past the hundred mile mark, and why the rules of the marathon simply stop applying out there. This is the story of how a schoolteacher became the best ultrarunner alive, and what her career accidentally proves about the physiology of going very, very long.
+
+## A slow start, on purpose
+
+Dauwalter was born in 1985 in Hopkins, Minnesota, and she was an athlete long before she was a runner. In high school she won the Minnesota state Nordic skiing championship four times, then took a cross country skiing scholarship to the University of Denver, where she studied biology. She went on to earn a master's degree in teaching from the University of Mississippi and spent years afterward teaching science in Denver area schools, coaching skiing and running on the side.
+
+She ran her first ultramarathon in her twenties almost on a whim, and for years ultrarunning was a hobby squeezed around a teaching job, not a career. That changed gradually. In 2016 she won the Run Rabbit Run 100 mile and set a course record at the Javelina Jundred 100 kilometer. In 2017 she won Run Rabbit Run again, finishing the last twelve miles with temporary vision loss from exhaustion, and then a few months later came Moab. By the time she stepped away from the classroom to run full time, she was already, by any reasonable measure, the best in the world at this particular kind of suffering.
+
+What is worth sitting with is how ordinary the front half of that story is. No prodigy narrative, no childhood spent training for this. A capable college skier who became a science teacher, who ran for fun, and who turned out to have a body and a mind unusually well suited to a sport that barely existed in its modern form when she was in high school. The talent she had was not for speed. It was for durability, and durability is a much stranger and more interesting thing to train for.
+
+## Where the marathon wall stops being the point
+
+Ask a marathoner what happens at mile twenty and you will hear about the wall: legs suddenly heavy, pace collapsing, the specific misery of running out of stored carbohydrate. It is a real phenomenon. More than two out of five marathoners report hitting it, and it comes down to glycogen, the body's stored form of sugar in muscle and liver, running low faster than the body can pull energy from fat instead.
+
+Push the distance out past four hours, into true ultramarathon territory, and the problem changes shape entirely. Nobody carries enough glycogen to fuel eighteen, twenty four, or fifty six hours of movement, so finishing at all depends on how efficiently the body can burn fat for fuel at a pace still fast enough to be useful, a shift physiologists call the fat oxidation crossover. A 2018 review in Frontiers in Physiology laid out just how differently the ultra distance body behaves compared to the marathon body: carbohydrate still dominates energy intake in a hundred kilometer race, but as races stretch past that, the fat share of intake climbs, and by multi day events fat can supply well over a quarter of total fuel. The same review found that ultrarunners finish these races with creatine kinase levels, the standard marker of muscle breakdown, in the range of one hundred thousand to two hundred thousand units per liter, ten to a hundred times what you would see after a hard weight session. Kidneys and livers take a temporary hit. Inflammation markers spike. The immune system dips for days afterward, which is part of why elite ultrarunners so often get sick right after a big race and not during it.
+
+In other words, past the marathon, the sport is not a longer version of the same event. It is a different physiological problem, one that rewards fat burning efficiency, gut tolerance for constant eating, and the ability to keep making good decisions on almost no sleep, over raw aerobic horsepower. That reshuffling of what actually matters is the door through which women, and Dauwalter in particular, walk through and keep walking.
+
+## Why the gap closes, and sometimes flips
+
+At short, explosive distances, the sex gap in running performance is close to ten percent, roughly the difference between the fastest men and women in the hundred meter dash. At marathon distance that gap narrows to around nine percent. Push further, into ultramarathon distances, and multiple analyses of large race datasets put the gap closer to six percent, and it keeps shrinking as races get longer and stranger, all the way out to multi day timed events.
+
+Researchers have proposed a few real physiological reasons for this rather than treating it as a fluke of small sample sizes. Studies comparing men and women after ultra distance efforts have found that women show less peripheral fatigue in the muscles used for propulsion and a smaller drop in maximal force output than men after comparable efforts, suggesting a genuine fatigue resistance advantage that only shows up once the distance gets extreme enough to matter. Add to that generally better fat oxidation efficiency at a given exercise intensity, and a body composition that carries a higher percentage of fat as usable fuel, and you have a real biological case for why the marathon's ten percent gap is not a law of nature that holds at every distance. It is the gap you get at a distance where raw aerobic power and muscle fatigue resistance both matter equally. Change the ratio of those two ingredients by tripling or quadrupling the distance, and the results tend to shift with it.
+
+Dauwalter's Moab win was not a statistical anomaly plucked from nowhere. It sat at the far edge of a real, measurable, published trend, at a distance where the trend is strongest and the field of competitors small enough that one exceptional physiology can be the whole story.
+
+## The pain cave, repeated on purpose
+
+What separates Dauwalter from other very good ultrarunners with strong physiology is what she has done with the mental side of the sport. She talks often about a mental space she calls the pain cave, the place late in a race where the body is screaming to stop and the only tool left is the mind's willingness to keep going anyway. Most athletes describe that place as something to survive. Dauwalter has reframed it as something closer to a destination, the point in a race where the real competition actually starts, because by then the physiology has mostly sorted itself out and what remains is a battle of will.
+
+That mental durability got tested in the strangest possible format in October of 2020, at the height of the pandemic, when in person mass racing had shut down almost everywhere. The Big's Backyard Ultra runs on a brutally simple format: every runner must complete a 4.16 mile loop within exactly one hour, over and over, and whoever is still moving when everyone else has quit is declared the winner, with no fixed finish line at all. Dauwalter won the American edition that year by completing 68 loops, 283.3 miles, running for 56 hours and 52 minutes with almost no sleep, tying the format's overall competitive record set two years earlier by the Swedish runner Johan Steene. It remains the longest distance a woman has ever covered in that event.
+
+Three years later came the season that made her case impossible to argue with. In the summer of 2023, within a single seventy day window, Dauwalter won the Western States 100 in California, breaking the previous women's course record by roughly eighty minutes with a time of 15 hours 29 minutes and 34 seconds. Weeks later she won the Hardrock 100 in Colorado's San Juan Mountains, one of the most technical and highest altitude hundred mile courses in the sport. Then she won the Ultra Trail du Mont Blanc in the French Alps, arguably the most competitive ultra on the planet. No one, man or woman, had ever won all three of that sport's most prestigious hundred mile races in a single season. She had, at that point, quietly redefined what a single human season of ultrarunning could contain.
+
+## What actually carries over
+
+For anyone coming at this from cycling, as most endurance athletes eventually do out of curiosity if nothing else, the honest answer is that less carries over than you would hope. Cycling builds a huge aerobic engine and teaches pacing discipline, both genuinely useful. But it does almost nothing to prepare the specific tissues, tendons, and stabilizer muscles that absorb the repeated impact of running for a day and a half straight, which is why so many strong cyclists get humbled by their first fifty mile trail race. What ultrarunning asks for instead is closer to a specialized skill: an efficient, well trained fat burning system, a gut that has practiced eating real food while moving, and, as Dauwalter's career keeps demonstrating, a mind that has practiced treating exhaustion as information rather than as a stop sign.
+
+The marathon wall is real, and it deserves the respect runners give it. But it turns out to be a local phenomenon, true at 26.2 miles and increasingly beside the point at 100, 200, or 283. Somewhere out past that point, on a slickrock trail in Utah or a gravel loop in Tennessee, the rules change enough that a science teacher from Minnesota could out finish every man in the race. The engineering behind it is not magic. It is fat oxidation curves and fatigue resistant muscle fibers and a mind willing to keep making decisions at hour fifty. It just took someone willing to go find the edge of it.
+`
+});
