@@ -301,16 +301,40 @@
     renderSendStrip(sendEl);
   }
 
-  /* ---------- speech engine ---------- */
+  /* ---------- speech engine ----------
+     Two quirks of SpeechSynthesis shape everything below.
+
+     1. cancel() is asynchronous and messy. A speak() issued in the same task
+        as a cancel() is silently dropped, and the cancelled utterance still
+        fires end/error afterwards - so a naive handler advances the position
+        for an utterance we already walked away from. Every (re)start takes a
+        token; callbacks carrying a stale token are ignored, and the new
+        utterance is queued in a later task.
+
+     2. Chrome gives up part way through a long utterance (around 15 seconds).
+        Sentences are therefore spoken in short chunks, and a watchdog picks
+        playback back up if the engine drops it anyway. */
 
   var speech = {
-    sents: [],   // array of {el, text}
-    idx: 0,
+    sents: [],      // [{el, text}] - one per sentence span in the article
+    idx: 0,         // sentence currently being spoken
+    chunks: [],     // that sentence, split into utterance-sized pieces
+    chunkIdx: 0,
     playing: false,
+    done: false,
     voice: null,
     rate: 1,
+    token: 0,       // bumped on every (re)start, checked by every callback
+    utter: null,    // live reference: engines have been known to GC these
+    lastTick: 0,    // when audio last demonstrably progressed
   };
-  var keepAlive = null;
+  var watchdog = null;
+
+  /* Safari does not have Chrome's cut-off bug, and a resume() issued there
+     outside a user gesture can leave synthesis paused for good, so the nudge
+     below is kept to Chromium. iOS Chrome is Safari underneath. */
+  var UA = navigator.userAgent || "";
+  var NEEDS_NUDGE = /Chrome|Chromium|Edg\//.test(UA) && !/iPhone|iPad|iPod/.test(UA);
 
   function playerEl() { return document.getElementById("player"); }
 
@@ -320,7 +344,10 @@
       function (el) { return { el: el, text: el.textContent.trim() }; }
     );
     speech.idx = 0;
+    speech.chunks = [];
+    speech.chunkIdx = 0;
     speech.playing = false;
+    speech.done = false;
 
     var p = playerEl();
     p.querySelector(".p-title").textContent = ep.title;
@@ -358,45 +385,130 @@
     speech.voice = ordered.filter(function (v) { return v.voiceURI === sel.value; })[0] || ordered[0];
   }
 
+  /* Keep each utterance comfortably inside Chrome's cut-off window. Slower
+     speech covers less text in the same number of seconds, so the character
+     budget follows the rate. */
+  function chunkLimit() {
+    return Math.max(80, Math.round(150 * (speech.rate || 1)));
+  }
+
+  function chunkText(text) {
+    var limit = chunkLimit();
+    var rest = String(text || "").trim();
+    var out = [];
+    while (rest.length > limit) {
+      var head = rest.slice(0, limit);
+      var cut = Math.max(head.lastIndexOf(", "), head.lastIndexOf("; "),
+                         head.lastIndexOf(": "), head.lastIndexOf("— "));
+      if (cut < limit * 0.4) cut = head.lastIndexOf(" ");   // no clause break, any word will do
+      cut = cut > 0 ? cut + 1 : limit;
+      out.push(rest.slice(0, cut).trim());
+      rest = rest.slice(cut).trim();
+    }
+    if (rest) out.push(rest);
+    return out;
+  }
+
+  /* Move the reading position to a sentence, without touching the audio. */
+  function enterSentence(i) {
+    speech.idx = i;
+    speech.done = false;
+    var item = speech.sents[i];
+    speech.chunks = item ? chunkText(item.text) : [];
+    speech.chunkIdx = 0;
+    if (item) highlight(item.el);
+    updateProgress();
+    updateStatus();
+  }
+
+  /* Start (or restart) audio at the current position. */
   function speakCurrent() {
-    if (!TTS) return;
-    if (speech.idx >= speech.sents.length) { stopSpeech(); speech.idx = 0; updateProgress(); updateStatus(); return; }
-    window.speechSynthesis.cancel();
-    var item = speech.sents[speech.idx];
-    highlight(item.el);
-    var u = new SpeechSynthesisUtterance(item.text);
+    if (!TTS || !speech.sents.length) return;
+    if (speech.idx >= speech.sents.length) { finishArticle(); return; }
+    if (!speech.chunks.length) enterSentence(speech.idx);
+
+    var token = ++speech.token;
+    var busy = window.speechSynthesis.speaking || window.speechSynthesis.pending;
+    if (busy) window.speechSynthesis.cancel();
+    // An utterance queued in the same task as cancel() never gets spoken, so
+    // hand speak() to a later task and let the engine settle first.
+    setTimeout(function () { speakChunk(token); }, busy ? 80 : 0);
+    updateStatus();
+  }
+
+  function speakChunk(token) {
+    if (token !== speech.token || !speech.playing) return;   // superseded
+
+    if (speech.chunkIdx >= speech.chunks.length) {           // sentence finished
+      if (speech.idx + 1 >= speech.sents.length) { finishArticle(); return; }
+      enterSentence(speech.idx + 1);
+    }
+    var text = speech.chunks[speech.chunkIdx];
+    if (!text) { speech.chunkIdx++; speakChunk(token); return; }
+
+    var u = new SpeechSynthesisUtterance(text);
     if (speech.voice) { u.voice = speech.voice; u.lang = speech.voice.lang; }
     u.rate = speech.rate;
+    u.onstart = function () { speech.lastTick = Date.now(); };
     u.onend = function () {
-      if (!speech.playing) return;
-      speech.idx++;
-      updateProgress();
-      speakCurrent();
+      if (token !== speech.token || !speech.playing) return;
+      speech.lastTick = Date.now();
+      speech.chunkIdx++;
+      speakChunk(token);
     };
-    u.onerror = function () { /* skip a bad utterance */ if (speech.playing) { speech.idx++; speakCurrent(); } };
+    u.onerror = function (e) {
+      if (token !== speech.token || !speech.playing) return;
+      // "interrupted"/"canceled" are our own cancel() landing late - the run
+      // that replaced this one owns the position now, so leave it alone.
+      var err = e && e.error;
+      if (err === "interrupted" || err === "canceled") return;
+      speech.lastTick = Date.now();
+      speech.chunkIdx++;                                     // skip a bad chunk
+      speakChunk(token);
+    };
+    speech.utter = u;          // hold a reference so it survives until it ends
+    speech.lastTick = Date.now();
     window.speechSynthesis.speak(u);
+  }
+
+  function finishArticle() {
+    speech.playing = false;
+    speech.done = true;
+    speech.chunks = [];
+    speech.chunkIdx = 0;
+    speech.token++;
+    stopWatchdog();
+    if (TTS) window.speechSynthesis.cancel();
+    clearHighlight();
+    setPlayIcon(false);
+    speech.idx = 0;
+    updateProgress();
     updateStatus();
   }
 
   function play() {
     if (!TTS || !speech.sents.length) return;
+    if (speech.done) enterSentence(0);
     speech.playing = true;
+    speech.done = false;
     setPlayIcon(true);
-    startKeepAlive();
+    startWatchdog();
     speakCurrent();
   }
 
   function pause() {
     speech.playing = false;
+    speech.token++;            // orphan any callback still in flight
     setPlayIcon(false);
-    stopKeepAlive();
+    stopWatchdog();
     if (TTS) window.speechSynthesis.cancel();
     updateStatus();
   }
 
   function stopSpeech() {
     speech.playing = false;
-    stopKeepAlive();
+    speech.token++;
+    stopWatchdog();
     if (TTS) window.speechSynthesis.cancel();
     clearHighlight();
     var p = playerEl();
@@ -404,29 +516,41 @@
   }
 
   function jump(delta) {
-    speech.idx = Math.max(0, Math.min(speech.sents.length - 1, speech.idx + delta));
-    updateProgress();
-    if (speech.playing) speakCurrent(); else { highlight(speech.sents[speech.idx].el); updateStatus(); }
+    if (!speech.sents.length) return;
+    enterSentence(Math.max(0, Math.min(speech.sents.length - 1, speech.idx + delta)));
+    if (speech.playing) speakCurrent();
   }
 
   function seekRatio(r) {
     if (!speech.sents.length) return;
-    speech.idx = Math.max(0, Math.min(speech.sents.length - 1, Math.floor(r * speech.sents.length)));
-    updateProgress();
-    if (speech.playing) speakCurrent(); else { highlight(speech.sents[speech.idx].el); updateStatus(); }
+    enterSentence(Math.max(0, Math.min(speech.sents.length - 1, Math.floor(r * speech.sents.length))));
+    if (speech.playing) speakCurrent();
   }
 
-  /* Chrome stops long synthesis after ~15s; nudge it to keep going. */
-  function startKeepAlive() {
-    stopKeepAlive();
-    keepAlive = setInterval(function () {
-      if (speech.playing && window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
-        window.speechSynthesis.pause();
-        window.speechSynthesis.resume();
+  /* Safety net for everything the engine does behind our back: the ~15s
+     cut-off, a resume() that never took, an utterance quietly dropped. */
+  function startWatchdog() {
+    stopWatchdog();
+    speech.lastTick = Date.now();
+    var ticks = 0;
+    watchdog = setInterval(function () {
+      if (!speech.playing || !TTS) return;
+      ticks++;
+      var s = window.speechSynthesis;
+      if (s.paused) { s.resume(); return; }
+      if (s.speaking) {
+        // Chunks are short enough to finish well inside the cut-off, so the
+        // nudge is only a backstop - often enough to matter, rare enough not
+        // to chop up the audio.
+        if (NEEDS_NUDGE && ticks % 6 === 0) { s.pause(); s.resume(); }
+        return;
       }
-    }, 9000);
+      // Nothing speaking and nothing queued while we believe we are playing:
+      // the utterance was dropped. Pick up from where we left off.
+      if (!s.pending && Date.now() - speech.lastTick > 2500) speakCurrent();
+    }, 1000);
   }
-  function stopKeepAlive() { if (keepAlive) { clearInterval(keepAlive); keepAlive = null; } }
+  function stopWatchdog() { if (watchdog) { clearInterval(watchdog); watchdog = null; } }
 
   function highlight(el) {
     clearHighlight();
@@ -451,8 +575,9 @@
   function updateStatus() {
     var p = playerEl(); if (!p) return;
     var total = speech.sents.length;
+    var state = speech.done ? "Finished" : (speech.playing ? "Reading" : "Paused");
     p.querySelector(".p-sub").textContent = total
-      ? (speech.playing ? "Reading" : "Paused") + " · " + Math.min(speech.idx + 1, total) + " / " + total
+      ? state + " · " + Math.min(speech.idx + 1, total) + " / " + total
       : "";
   }
   function setPlayIcon(playing) {
@@ -495,13 +620,15 @@
       speech.rate = parseFloat(this.value);
       p.querySelector("#rateVal").textContent = speech.rate.toFixed(2) + "x";
       localStorage.setItem("tangents.rate", speech.rate);
-      if (speech.playing) speakCurrent();
+      // A new rate means a new chunk size, so re-cut the current sentence
+      // and pick it up from the top rather than mid-phrase.
+      if (speech.playing) { enterSentence(speech.idx); speakCurrent(); }
     };
     p.querySelector("#voice").onchange = function () {
       var voices = window.speechSynthesis.getVoices() || [];
       speech.voice = voices.filter(function (v) { return v.voiceURI === this.value; }.bind(this))[0] || null;
       if (speech.voice) localStorage.setItem("tangents.voice", speech.voice.voiceURI);
-      if (speech.playing) speakCurrent();
+      if (speech.playing) { enterSentence(speech.idx); speakCurrent(); }
     };
   }
 
