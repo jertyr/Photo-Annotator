@@ -179,6 +179,7 @@ a { color: var(--accent); }
 .rate-wrap { display: flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--ink-faint); }
 .rate-wrap input { width: 74px; }
 .no-tts { display: none; color: var(--wild); font-size: 0.78rem; padding: 6px 0 0; }
+.p-note { display: none; color: var(--wild); font-size: 0.75rem; padding: 6px 0 0; }
 
 @media (max-width: 620px) {
   .reader-head h1 { font-size: 1.6rem; }
