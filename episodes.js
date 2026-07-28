@@ -11,7 +11,7 @@ window.EPISODES.push({
   date: "2026-07-26",
   category: "close", // "close" (near your interests) or "wild" (a stretch)
   topics: ["construction", "history of wood", "lumber", "logging"],
-  readingTimeMin: 13,
+  readingTimeMin: 10,
   summary: "The stick of lumber on your jobsite is the end of a 200-year story: from the white pine of Maine and the Great Lakes, to the Chicago invention that let a house go up in weeks, to the day a 2x4 stopped being two inches by four.",
   sources: [
     { title: "History of the lumber industry in the United States (Wikipedia)", url: "https://en.wikipedia.org/wiki/History_of_the_lumber_industry_in_the_United_States" },
@@ -64,11 +64,11 @@ By the early 1900s the wave had reached the Pacific Northwest, and the tree of t
 
 What is interesting is the slow shift in thinking. As early as 1909, a Weyerhaeuser manager named George S. Long was asking his timber cruisers to scout sites where the company might deliberately regrow Douglas fir. The obstacles were real: fir could take up to a hundred years to reach harvest size, and in the meantime you had wildfires and property taxes eating at the land. For a while, companies just logged an area and left regrowth to nature, with mixed results at best. Then, in 1938, Weyerhaeuser planted its first experimental seedlings on purpose. It was a small thing, but it marked a genuine change: the idea that timberland was a renewable crop to be replanted, not a one-time deposit to be spent. Today much of the industry is on its third generation of planted trees on the same ground.
 
-## Why it still matters on your jobsite
+## What the modern stud remembers
 
 So the modern stud is the sum of all of this. It is dimensional because Herbert Hoover's Commerce Department wanted boards from Oregon and Maine to match. It is dry and planed because that is what a national market demanded. It gets nailed into a stud wall because a few builders in 1830s Chicago figured out you could skip the master carpenter. And it very likely came from a tree that was planted on purpose, on land that an earlier generation would have simply cut and abandoned.
 
-The next time you frame a wall, you are performing a technique that is almost two hundred years old, with a material shaped by a century of hard lessons about running out. The wood remembers all of it. It is worth knowing what it remembers.
+Framing a wall is a technique almost two hundred years old, worked in a material shaped by a century of hard lessons about running out. The wood remembers all of it.
 `
 });
 
@@ -159,9 +159,9 @@ A dead language with a global weekly news audience and an organized fanbase will
 
 ## The first words worth knowing
 
-If you are going to start somewhere, start with the words that are already in your hands. This is the part I think you will enjoy most, because the trade you work in is one of the most heavily Latin corners of English there is, and the etymologies are not decoration. They are descriptions of the tools.
+The best place to start is with the words already in circulation. The vocabulary of building and measurement is one of the most heavily Latin corners of English there is, and the etymologies are not decoration. They are descriptions of the tools.
 
-Norma was a carpenter's square. From it comes normalis, meaning made according to the square, true, correct. That is the ancestor of our word normal. And the Latin enormis meant out of the square, off true, irregular, which is where we get enormous. When you say a wall is not normal, you are unknowingly saying it is not square, which is very likely exactly what you mean.
+Norma was a carpenter's square. From it comes normalis, meaning made according to the square, true, correct. That is the ancestor of our word normal. And the Latin enormis meant out of the square, off true, irregular, which is where we get enormous. To call a wall not normal is to say, without knowing it, that the wall is not square.
 
 Plumbum was the Latin word for lead, the metal. A weighted string used to find true vertical had a lead bob on the end of it, so the whole operation took the metal's name. That is why we say plumb, and why a plumber is named after the lead pipe, and why the chemical symbol for lead is Pb.
 
@@ -169,15 +169,15 @@ Libra was a balance or a set of scales, and its diminutive libella was a small l
 
 Caementum meant rough quarried stone chips, the aggregate you mixed into Roman mortar. It gives us cement. Mortarium was the bowl you mixed it in, which gives us mortar. Struere meant to pile up; construere meant to pile together, which gives us construction, and destruere, to pull the pile apart, gives us destruction. Fabrica was a workshop, which gives us fabricate. Aedificare meant to build, which gives us edifice. Regula was a straightedge, which gives us rule, regular, and regulate.
 
-So when you tell a crew to check that the construction is level, plumb, and square before the cement goes down, roughly every load-bearing word in that sentence came off a Roman jobsite. The Romans were the best builders in the ancient world, they left the vocabulary lying around, and English picked it up and never put it back.
+In an instruction as ordinary as check that the construction is level, plumb, and square before the cement goes down, roughly every load-bearing word came off a Roman building site. The Romans were the best builders in the ancient world, they left the vocabulary lying around, and English picked it up and never put it back.
 
-That is not a bad first vocabulary list. It is not amo, amas, amat. It is the words you already say fifty times a day without knowing you inherited them.
+That is not a bad first vocabulary list. It is not amo, amas, amat. It is a set of words spoken fifty times a day by people with no idea they inherited them.
 
 ## Where this goes next
 
 In part two we will get into the actual machinery, which is where Latin earns its reputation for difficulty and also where it gets interesting. Latin does not rely much on word order. It relies on endings, so a noun changes shape depending on the job it is doing in the sentence, which means you can scramble a Latin sentence almost at will and it still means exactly one thing. It is a language built for precision over convenience. Once you see how that machine works, a lot of things about legal writing and scientific naming suddenly make sense.
 
-For now, the takeaway is this. Latin did not survive because anybody preserved it out of sentiment. It survived because it was useful in a very specific way: it held still while everything around it moved. In a world of drifting meanings, a language that cannot drift is a kind of infrastructure. And infrastructure, as you know better than most, is the stuff nobody notices until they try to work without it.
+For now, the takeaway is this. Latin did not survive because anybody preserved it out of sentiment. It survived because it was useful in a very specific way: it held still while everything around it moved. In a world of drifting meanings, a language that cannot drift is a kind of infrastructure. And infrastructure is the stuff nobody notices until they try to work without it.
 `
 });
 window.EPISODES.push({
@@ -233,9 +233,9 @@ That mental durability got tested in the strangest possible format in October of
 
 Three years later came the season that made her case impossible to argue with. In the summer of 2023, within a single seventy day window, Dauwalter won the Western States 100 in California, breaking the previous women's course record by roughly eighty minutes with a time of 15 hours 29 minutes and 34 seconds. Weeks later she won the Hardrock 100 in Colorado's San Juan Mountains, one of the most technical and highest altitude hundred mile courses in the sport. Then she won the Ultra Trail du Mont Blanc in the French Alps, arguably the most competitive ultra on the planet. No one, man or woman, had ever won all three of that sport's most prestigious hundred mile races in a single season. She had, at that point, quietly redefined what a single human season of ultrarunning could contain.
 
-## What actually carries over
+## What the distance actually asks for
 
-For anyone coming at this from cycling, as most endurance athletes eventually do out of curiosity if nothing else, the honest answer is that less carries over than you would hope. Cycling builds a huge aerobic engine and teaches pacing discipline, both genuinely useful. But it does almost nothing to prepare the specific tissues, tendons, and stabilizer muscles that absorb the repeated impact of running for a day and a half straight, which is why so many strong cyclists get humbled by their first fifty mile trail race. What ultrarunning asks for instead is closer to a specialized skill: an efficient, well trained fat burning system, a gut that has practiced eating real food while moving, and, as Dauwalter's career keeps demonstrating, a mind that has practiced treating exhaustion as information rather than as a stop sign.
+Carryover from other endurance sports is thinner than it looks. Cycling builds a huge aerobic engine and teaches pacing discipline, both genuinely useful. But it does almost nothing to prepare the specific tissues, tendons, and stabilizer muscles that absorb the repeated impact of running for a day and a half straight, which is why so many strong cyclists get humbled by their first fifty mile trail race. What ultrarunning asks for instead is closer to a specialized skill: an efficient, well trained fat burning system, a gut that has practiced eating real food while moving, and, as Dauwalter's career keeps demonstrating, a mind that has practiced treating exhaustion as information rather than as a stop sign.
 
 The marathon wall is real, and it deserves the respect runners give it. But it turns out to be a local phenomenon, true at 26.2 miles and increasingly beside the point at 100, 200, or 283. Somewhere out past that point, on a slickrock trail in Utah or a gravel loop in Tennessee, the rules change enough that a science teacher from Minnesota could out finish every man in the race. The engineering behind it is not magic. It is fat oxidation curves and fatigue resistant muscle fibers and a mind willing to keep making decisions at hour fifty. It just took someone willing to go find the edge of it.
 `
@@ -276,11 +276,11 @@ Budget versus actual, per active job, while the job is still open. The value is 
 
 Revenue per employee, checked monthly against your own trailing three-month average. This is the cleanest single measure of how much output your team turns out, and watching your own trend matters more than any outside benchmark.
 
-## Know your own numbers first
+## The most honest benchmark is internal
 
-Here is the part people get backwards. They reach for industry benchmarks first, and then feel good or bad about themselves. But a benchmark is only a starting point. Your local market, your project mix, and your business model will shift every one of those numbers. The right sequence is to know your own numbers cold first, watch how they move over time, and then use the industry ranges to hunt for weak spots. Your own history is the most honest benchmark you own.
+This is the part most people get backwards. They reach for industry benchmarks first, and then feel good or bad about themselves. But a benchmark is only a starting point. Local market, project mix, and business model shift every one of those numbers. The right sequence runs the other way: know the internal numbers cold, watch how they move over time, and then use the industry ranges to hunt for weak spots. A firm's own history is the most honest benchmark it has.
 
-That is really all informatics is at the working level. You take the records the business already generates, you pick the handful that predict the future rather than just report the past, and you look at them often enough to act while acting still matters. The data was always there. Informatics is just the decision to listen to it.
+That is really all informatics is at the working level. It means taking the records a business already generates, picking the handful that predict the future rather than just report the past, and looking at them often enough to act while acting still matters. The data was always there. Informatics is just the decision to listen to it.
 `
 });
 
@@ -317,12 +317,12 @@ Now look at revenue per employee, which measures how much top-line each person g
 
 The reason comes down to one idea: operating leverage, or what it costs to serve the next customer. When a software company sells one more copy of its product, the extra cost is close to zero. The code is already written. That is why margins expand as they grow, and why revenue per employee can go to the moon; a handful of engineers can serve millions of users. The revenue is recurring, and the marginal cost is almost nothing.
 
-Construction is the opposite. Every house is built once, from scratch, with real material and real hours. There is no copy-and-paste. The next job costs nearly as much to deliver as the last one, because you are buying the lumber and paying the crew every single time. That is not a flaw in how you run your company. It is the physics of the industry. You are converting material and labor into a finished thing, and that conversion has a hard floor of cost that software simply does not have.
+Construction is the opposite. Every house is built once, from scratch, with real material and real hours. There is no copy-and-paste. The next job costs nearly as much to deliver as the last one, because you are buying the lumber and paying the crew every single time. That is not a flaw in how any one company is run. It is the physics of the industry. Construction converts material and labor into a finished thing, and that conversion has a hard floor of cost that software simply does not have.
 
-## What it means for your numbers
+## Reading the number correctly
 
-Here is where it gets personal. A 60-person firm doing 15 million dollars in revenue is running at about 250,000 dollars of revenue per employee. Held up against the software world, that can look modest. Held up against construction, it is a strong number, well above the typical benchmark for the trade. The lesson is not to envy the software company's margins; you are not in that business and never were. The lesson is that within your own industry, revenue per head and net margin are the two dials that separate the good builders from the great ones, because the industry's ceiling is low enough that a few points of improvement is the whole game.
+Put a concrete case against it. A 60-person construction firm doing 15 million dollars in revenue is running at about 250,000 dollars of revenue per employee. Held up against the software world, that looks modest. Held up against construction, it is a strong number, well above the typical benchmark for the trade. The point is not to envy the software company's margins, because that is a different business with a different cost structure. The point is that within construction, revenue per head and net margin are the two dials that separate the good builders from the great ones, because the industry's ceiling is low enough that a few points of improvement is the whole game.
 
-So when you compare yourself to other industries, do it to understand the shape of your business, not to feel behind. The software company keeps more of each dollar because it sells the same thing twice. You build something new every time. Different physics, different numbers, and knowing which game you are playing is the beginning of playing it well.
+Cross-industry comparison is worth doing to understand the shape of a business, not to keep score against it. The software company keeps more of each dollar because it sells the same thing twice. A builder makes something new every time. Different physics, different numbers, and knowing which game is being played is the beginning of playing it well.
 `
 });
