@@ -327,6 +327,8 @@
     token: 0,       // bumped on every (re)start, checked by every callback
     utter: null,    // live reference: engines have been known to GC these
     lastTick: 0,    // when audio last demonstrably progressed
+    fails: 0,       // consecutive failures, reset by any chunk that completes
+    note: "",       // what to tell the listener when something went wrong
   };
   var watchdog = null;
 
@@ -348,6 +350,8 @@
     speech.chunkIdx = 0;
     speech.playing = false;
     speech.done = false;
+    speech.fails = 0;
+    note("");
 
     var p = playerEl();
     p.querySelector(".p-title").textContent = ep.title;
@@ -368,21 +372,63 @@
     populateVoices();
   }
 
+  function isEnglish(v) { return /^en(-|_|$)/i.test(v.lang); }
+  function isLocal(v) { return v.localService === true; }
+  function voiceName(v) { return v.name.replace(/ \(.*\)$/, ""); }
+
+  /* Voice choice is the difference between working and not working on a weak
+     connection. Chrome's "Google ..." voices are synthesised on Google's
+     servers, so every utterance is a network round trip and the reader dies
+     the moment the signal drops. On-device voices need no network at all, so
+     they sort first and become the default. The online ones stay available:
+     they sound better when there is bandwidth to spare. */
+  function orderVoices(voices) {
+    function rank(v) { return (isLocal(v) ? 0 : 2) + (isEnglish(v) ? 0 : 1); }
+    return voices.slice().sort(function (a, b) {
+      return (rank(a) - rank(b)) || a.name.localeCompare(b.name);
+    });
+  }
+
+  function firstLocalVoice() {
+    var ordered = orderVoices(window.speechSynthesis.getVoices() || []);
+    return ordered.filter(function (v) { return isLocal(v) && isEnglish(v); })[0] ||
+           ordered.filter(isLocal)[0] || null;
+  }
+
   function populateVoices() {
     var sel = document.getElementById("voice");
     if (!sel) return;
     var voices = window.speechSynthesis.getVoices() || [];
     if (!voices.length) return; // will be called again on voiceschanged
-    var en = voices.filter(function (v) { return /^en(-|_|$)/i.test(v.lang); });
-    var rest = voices.filter(function (v) { return !/^en(-|_|$)/i.test(v.lang); });
-    var ordered = en.concat(rest);
+    var ordered = orderVoices(voices);
     var saved = localStorage.getItem("tangents.voice");
+    var chosen = ordered.filter(function (v) { return v.voiceURI === saved; })[0] || ordered[0];
     sel.innerHTML = ordered.map(function (v) {
-      return '<option value="' + v.voiceURI + '"' +
-        (v.voiceURI === saved ? " selected" : "") + ">" +
-        escapeHtml(v.name.replace(/ \(.*\)$/, "")) + "</option>";
+      return '<option value="' + escapeHtml(v.voiceURI) + '"' +
+        (v.voiceURI === chosen.voiceURI ? " selected" : "") + ">" +
+        escapeHtml(voiceName(v) + (isLocal(v) ? " (on device)" : " (online)")) + "</option>";
     }).join("");
-    speech.voice = ordered.filter(function (v) { return v.voiceURI === sel.value; })[0] || ordered[0];
+    // A voice picked mid-listen stays put; this only fills in the default.
+    var current = speech.voice &&
+      ordered.filter(function (v) { return v.voiceURI === speech.voice.voiceURI; })[0];
+    speech.voice = current || chosen;
+  }
+
+  function useVoice(v) {
+    speech.voice = v;
+    try { localStorage.setItem("tangents.voice", v.voiceURI); } catch (e) { /* private mode */ }
+    var sel = document.getElementById("voice");
+    if (sel) sel.value = v.voiceURI;
+  }
+
+  function switchToLocalVoice(why) {
+    if (!speech.voice || isLocal(speech.voice)) return false;
+    var local = firstLocalVoice();
+    if (!local) return false;
+    useVoice(local);
+    speech.fails = 0;
+    note(why + " Switched to " + voiceName(local) + ", which reads on your device.");
+    return true;
   }
 
   /* Keep each utterance comfortably inside Chrome's cut-off window. Slower
@@ -453,6 +499,7 @@
     u.onend = function () {
       if (token !== speech.token || !speech.playing) return;
       speech.lastTick = Date.now();
+      speech.fails = 0;                    // a chunk got through: we are healthy
       speech.chunkIdx++;
       speakChunk(token);
     };
@@ -460,15 +507,49 @@
       if (token !== speech.token || !speech.playing) return;
       // "interrupted"/"canceled" are our own cancel() landing late - the run
       // that replaced this one owns the position now, so leave it alone.
-      var err = e && e.error;
+      var err = (e && e.error) || "";
       if (err === "interrupted" || err === "canceled") return;
       speech.lastTick = Date.now();
-      speech.chunkIdx++;                                     // skip a bad chunk
+      if (err === "network" || err === "synthesis-failed" || err === "synthesis-unavailable" ||
+          err === "audio-busy" || err === "audio-hardware" || !err) {
+        speechFailed(err || "no audio");   // recoverable: do not lose the text
+        return;
+      }
+      speech.chunkIdx++;                   // bad text rather than a bad engine
       speakChunk(token);
     };
     speech.utter = u;          // hold a reference so it survives until it ends
     speech.lastTick = Date.now();
     window.speechSynthesis.speak(u);
+  }
+
+  /* Re-speak the chunk we are already on, under a fresh token. */
+  function restartChunk(delay) {
+    var token = ++speech.token;
+    setTimeout(function () { speakChunk(token); }, delay || 0);
+  }
+
+  /* Something ate the audio: a dropped request to an online voice, a stalled
+     engine, a device that woke up unhappy. The text is not at fault, so retry
+     the same chunk rather than skipping past it. If the failures keep coming
+     and we are on an online voice, a weak connection is the likely culprit -
+     move to an on-device voice and carry on from the same place. */
+  function speechFailed(reason) {
+    if (!speech.playing) return;
+    speech.fails++;
+    if (speech.fails <= 2) { restartChunk(300 * speech.fails); return; }
+    if (switchToLocalVoice("Trouble reaching the online voice.")) { restartChunk(200); return; }
+    if (speech.fails <= 5) { restartChunk(600 * (speech.fails - 2)); return; }
+    note("Speech keeps failing here (" + reason + "). Press play to try again.");
+    pause();
+  }
+
+  function note(msg) {
+    speech.note = msg || "";
+    var p = playerEl();
+    if (!p) return;
+    var el = p.querySelector(".p-note");
+    if (el) { el.textContent = speech.note; el.style.display = speech.note ? "block" : "none"; }
   }
 
   function finishArticle() {
@@ -491,6 +572,10 @@
     if (speech.done) enterSentence(0);
     speech.playing = true;
     speech.done = false;
+    speech.fails = 0;
+    note("");
+    // No point sending text to a server we cannot reach.
+    if (navigator.onLine === false) switchToLocalVoice("You are offline.");
     setPlayIcon(true);
     startWatchdog();
     speakCurrent();
@@ -546,8 +631,12 @@
         return;
       }
       // Nothing speaking and nothing queued while we believe we are playing:
-      // the utterance was dropped. Pick up from where we left off.
-      if (!s.pending && Date.now() - speech.lastTick > 2500) speakCurrent();
+      // the utterance was dropped, or an online voice went quiet waiting on a
+      // network that is not coming back.
+      if (!s.pending && Date.now() - speech.lastTick > 2500) {
+        speech.lastTick = Date.now();
+        speechFailed("no audio");
+      }
     }, 1000);
   }
   function stopWatchdog() { if (watchdog) { clearInterval(watchdog); watchdog = null; } }
@@ -606,6 +695,7 @@
           "</div>" +
         "</div>" +
         '<div class="no-tts">Your browser will not read aloud here. Try Chrome or Safari, or read along below.</div>' +
+        '<div class="p-note"></div>' +
       "</div>";
     document.body.appendChild(p);
 
@@ -625,9 +715,13 @@
       if (speech.playing) { enterSentence(speech.idx); speakCurrent(); }
     };
     p.querySelector("#voice").onchange = function () {
+      var picked = this.value;
       var voices = window.speechSynthesis.getVoices() || [];
-      speech.voice = voices.filter(function (v) { return v.voiceURI === this.value; }.bind(this))[0] || null;
-      if (speech.voice) localStorage.setItem("tangents.voice", speech.voice.voiceURI);
+      var v = voices.filter(function (x) { return x.voiceURI === picked; })[0];
+      if (!v) return;
+      useVoice(v);
+      speech.fails = 0;
+      note("");                // their choice wins; stop nagging about the last one
       if (speech.playing) { enterSentence(speech.idx); speakCurrent(); }
     };
   }
@@ -637,6 +731,11 @@
       if (document.getElementById("voice")) populateVoices();
     };
   }
+
+  // Losing the signal mid-episode only matters if the voice lives on a server.
+  window.addEventListener("offline", function () {
+    if (speech.playing && switchToLocalVoice("Connection dropped.")) restartChunk(0);
+  });
 
   /* ---------- routing ---------- */
 
