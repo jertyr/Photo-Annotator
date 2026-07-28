@@ -25,10 +25,23 @@ decide what to write next. Keep it current: as interests shift, edit this file.
 - Style: **narrative, history-podcast voice.** A curious, well-read friend telling a story with a real arc, not a listicle.
 - Always ground claims in real facts and cite sources (used by the reader's Sources list).
 - **No em-dashes.** Use periods, semicolons, commas, or conjunctions instead.
+- **Every episode stands on its own.** Do not tie the subject back to construction, to
+  the company, or to the listener's day job. A topic is allowed to simply be about
+  itself. If a connection is genuinely there, it can appear where it naturally falls,
+  but a closing section that exists to explain why this matters to the listener is not
+  wanted and should not be written.
+
+  This is a correction, not a description. Episodes 0001 through 0005 all end that way
+  ("Why it still matters on your jobsite", "What it means for your numbers", and so on),
+  so do not take the existing library as the model for how to finish a piece. End where
+  the story ends.
 - Written report he listens to is the deliverable; keep prose clean for text-to-speech (avoid tables, heavy symbols, and parentheticals that read awkwardly aloud).
 
 ## Content mix target
 - About 70% "close" (category: "close"), 30% "wild" (category: "wild"). Track the running balance against the existing episodes and correct toward the target.
+- This governs which topics get picked, nothing else. A "close" topic is one drawn from
+  the interests above; it does not mean the episode should be written as advice for the
+  listener's business. See the standalone rule under Format preferences.
 
 ## Topic queue (edit freely)
 Next up, roughly in order. The Routine should pick the top unused item that keeps
