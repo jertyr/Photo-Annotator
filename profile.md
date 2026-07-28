@@ -25,10 +25,28 @@ decide what to write next. Keep it current: as interests shift, edit this file.
 - Style: **narrative, history-podcast voice.** A curious, well-read friend telling a story with a real arc, not a listicle.
 - Always ground claims in real facts and cite sources (used by the reader's Sources list).
 - **No em-dashes.** Use periods, semicolons, commas, or conjunctions instead.
+- **Every episode stands on its own.** Do not tie the subject back to construction, to
+  the company, or to the listener's day job. A topic is allowed to simply be about
+  itself. If a connection is genuinely there, it can appear where it naturally falls,
+  but a closing section that exists to explain why this matters to the listener is not
+  wanted and should not be written.
+
+  This is a correction, not a description. Every episode through 0005 originally ended
+  that way ("Why it still matters on your jobsite", "What it means for your numbers",
+  and so on). All five were fixed on 2026-07-28, so the library now models the right
+  behaviour and can be followed. Do not reintroduce the habit. End where the story ends.
+
+  Note that generic narrative second person is fine and is part of the house voice.
+  "Ask a marathoner what happens at mile twenty and you will hear about the wall" is
+  storytelling, not a tie-back. What is being ruled out is addressing the listener as
+  the owner of a construction company.
 - Written report he listens to is the deliverable; keep prose clean for text-to-speech (avoid tables, heavy symbols, and parentheticals that read awkwardly aloud).
 
 ## Content mix target
 - About 70% "close" (category: "close"), 30% "wild" (category: "wild"). Track the running balance against the existing episodes and correct toward the target.
+- This governs which topics get picked, nothing else. A "close" topic is one drawn from
+  the interests above; it does not mean the episode should be written as advice for the
+  listener's business. See the standalone rule under Format preferences.
 
 ## Topic queue (edit freely)
 Next up, roughly in order. The Routine should pick the top unused item that keeps
@@ -55,10 +73,17 @@ the 70/30 balance, then move it to "Done" below. Add new ideas anytime.
 - [close] 0001 The Grain of a Nation — history of wood, lumber, and logging in America.
 - [wild] 0002 The Language That Refuses to Die — Latin, part one.
 - [close] 0003 Into the Pain Cave — endurance running and the physiology of the wall.
-- [close] 0004 Your Numbers Are Talking — a contractor's own records as a forecast. Short
-  at about 4 minutes; worth a fuller treatment later if the topic lands well.
-- [close] 0005 A Tale of Three Industries — margins and revenue per employee across
-  construction, software, and manufacturing. Also short, about 5 minutes.
+- [close] 0004 The Twenty-One Signals — Mitchell and Burns inventing the leading indicator
+  in 1938, and how the idea reached business measurement. Rewritten 2026-07-28; the
+  previous version was 611 words of advice addressed to the listener.
+- [close] 0005 The String Quartet Problem — Baumol's cost disease, and why US construction
+  productivity has fallen for five decades. Rewritten 2026-07-28; the previous version was
+  669 words of advice addressed to the listener.
+
+  Both keep their original ids ("0004-your-numbers-are-talking",
+  "0005-a-tale-of-three-industries") even though the titles changed. The id is the key
+  the reader app stores ratings against, so changing it would orphan any feedback
+  already recorded on a listener's device.
 
 ## Feedback signals
 `feedback.md` is the running record of what actually landed. Read it on every run,
