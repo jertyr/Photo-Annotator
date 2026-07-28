@@ -34,15 +34,10 @@ decide what to write next. Keep it current: as interests shift, edit this file.
 Next up, roughly in order. The Routine should pick the top unused item that keeps
 the 70/30 balance, then move it to "Done" below. Add new ideas anytime.
 
-- [close] Endurance running: what actually happens to the body across the marathon distance
-  and beyond, how elite runners really train, and what does and does not carry over from
-  cycling. Ultra events and the physiology of the wall are fair game.
 - [close] Cold storage: how refrigerated warehousing became one of the hottest and most
   technical construction niches, the rules that govern it (food safety, ammonia refrigeration
   and process safety, envelope and vapor barrier requirements), and the economics of the
   business itself. Who builds these, who owns them, and what the returns look like.
-- [close] Data informatics: how a construction firm's own numbers (bids, change orders, cycle times) become forecasting.
-- [close] Industry benchmarking: what "good" margins and revenue-per-employee look like across construction vs. software vs. manufacturing vs. services.
 - [close] History of the nail, the screw, and the fastener, and how they changed building.
 - [close] Cycling: the science of training zones, FTP, and what the power data actually tells you.
 - [close] Nutrition: protein timing and the actual evidence base for the "1g per pound" rule.
@@ -59,6 +54,11 @@ the 70/30 balance, then move it to "Done" below. Add new ideas anytime.
 ## Done
 - [close] 0001 The Grain of a Nation — history of wood, lumber, and logging in America.
 - [wild] 0002 The Language That Refuses to Die — Latin, part one.
+- [close] 0003 Into the Pain Cave — endurance running and the physiology of the wall.
+- [close] 0004 Your Numbers Are Talking — a contractor's own records as a forecast. Short
+  at about 4 minutes; worth a fuller treatment later if the topic lands well.
+- [close] 0005 A Tale of Three Industries — margins and revenue per employee across
+  construction, software, and manufacturing. Also short, about 5 minutes.
 
 ## Feedback signals
 `feedback.md` is the running record of what actually landed. Read it on every run,
