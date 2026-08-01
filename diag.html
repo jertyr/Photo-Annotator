@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tangents speech diagnostic</title>
+<style>
+  :root { --ink:#1a1714; --faint:#7a7168; --line:#e3ddd4; --bg:#faf7f2; --hot:#b4451f; --ok:#2f6b3a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:720px; margin:0 auto; padding:20px 16px 60px; }
+  h1 { font-size:1.3rem; margin:0 0 4px; }
+  p.lead { color:var(--faint); font-size:.9rem; margin:0 0 20px; }
+  button { font:inherit; font-weight:600; border:0; border-radius:10px; padding:14px 18px;
+           background:var(--hot); color:#fff; width:100%; margin:0 0 10px; }
+  button.alt { background:#fff; color:var(--ink); border:1px solid var(--line); }
+  button:disabled { opacity:.5; }
+  h2 { font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; color:var(--faint);
+       margin:26px 0 8px; }
+  pre { background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px;
+        font:12px/1.45 ui-monospace,Menlo,Consolas,monospace; white-space:pre-wrap;
+        word-break:break-word; margin:0; }
+  .verdict { border-radius:10px; padding:12px 14px; margin:0 0 4px; font-size:.9rem;
+             border:1px solid var(--line); background:#fff; }
+  .verdict.bad { border-color:var(--hot); color:var(--hot); font-weight:600; }
+  .verdict.good { border-color:var(--ok); color:var(--ok); font-weight:600; }
+  .note { font-size:.82rem; color:var(--faint); margin:6px 0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Tangents speech diagnostic</h1>
+  <p class="lead">Run this on the device and browser where listening fails. It reports what the
+  speech engine actually does here, so the fix stops being guesswork.</p>
+
+  <button id="run">Run the test</button>
+  <button id="bg" class="alt">Background test: press, then lock your screen</button>
+  <button id="copy" class="alt" disabled>Copy report</button>
+
+  <div id="verdicts"></div>
+
+  <h2>Report</h2>
+  <pre id="out">Not run yet.</pre>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var out = document.getElementById("out");
+  var verdicts = document.getElementById("verdicts");
+  var lines = [];
+  var t0 = 0;
+
+  function log(s) {
+    var t = t0 ? ((Date.now() - t0) / 1000).toFixed(2) : "0.00";
+    lines.push("[" + t + "s] " + s);
+    out.textContent = lines.join("\n");
+  }
+  function say(s) { lines.push(s); out.textContent = lines.join("\n"); }
+  function verdict(text, cls) {
+    var d = document.createElement("div");
+    d.className = "verdict" + (cls ? " " + cls : "");
+    d.textContent = text;
+    verdicts.appendChild(d);
+  }
+
+  var TTS = ("speechSynthesis" in window) && ("SpeechSynthesisUtterance" in window);
+
+  function environment() {
+    say("=== ENVIRONMENT ===");
+    say("when        : " + new Date().toISOString());
+    say("userAgent   : " + navigator.userAgent);
+    say("platform    : " + (navigator.platform || "?"));
+    say("online      : " + navigator.onLine);
+    say("speech API  : " + (TTS ? "present" : "MISSING"));
+    try {
+      say("saved voice : " + (localStorage.getItem("tangents.voice") || "(none)"));
+      say("saved rate  : " + (localStorage.getItem("tangents.rate") || "(none)"));
+    } catch (e) { say("localStorage: blocked"); }
+  }
+
+  /* Voices can arrive late; wait for them rather than reporting an empty list. */
+  function waitForVoices(cb) {
+    var tries = 0;
+    (function poll() {
+      var v = (TTS && window.speechSynthesis.getVoices()) || [];
+      if (v.length || tries++ > 20) return cb(v);
+      setTimeout(poll, 150);
+    })();
+  }
+
+  function reportVoices(voices) {
+    say("");
+    say("=== VOICES (" + voices.length + ") ===");
+    if (!voices.length) { say("NONE. The engine reports no voices at all."); return; }
+    var local = 0;
+    voices.forEach(function (v) {
+      if (v.localService) local++;
+      say((v.localService ? "[on device] " : "[ online  ] ") +
+          v.name + "  (" + v.lang + ")" + (v.default ? "  *default" : ""));
+    });
+    say("");
+    say("on-device voices: " + local + " of " + voices.length);
+    if (!local) {
+      verdict("No on-device voices exist here. Every word has to come from a server, so a weak signal will stop playback and there is nothing to fall back to.", "bad");
+    }
+  }
+
+  /* Speak one phrase and record every event, with a hard timeout so a silent
+     engine cannot hang the run. */
+  function trySpeak(label, text, voice, timeoutMs, done) {
+    var u = new SpeechSynthesisUtterance(text);
+    if (voice) { u.voice = voice; u.lang = voice.lang; }
+    var settled = false, started = false;
+    function finish(how) {
+      if (settled) return;
+      settled = true;
+      done({ how: how, started: started });
+    }
+    u.onstart = function () { started = true; log(label + ": started"); };
+    u.onend = function () { log(label + ": ended"); finish("ended"); };
+    u.onerror = function (e) {
+      log(label + ": ERROR '" + ((e && e.error) || "unknown") + "'");
+      finish("error:" + ((e && e.error) || "unknown"));
+    };
+    log(label + ": speak() called" + (voice ? " with " + voice.name : " with engine default"));
+    window.speechSynthesis.speak(u);
+    setTimeout(function () {
+      if (!settled) {
+        log(label + ": TIMED OUT after " + (timeoutMs / 1000) + "s" +
+            (started ? " (started but never ended)" : " (never even started)"));
+        finish(started ? "stalled-after-start" : "never-started");
+      }
+    }, timeoutMs);
+  }
+
+  /* Six short utterances chained on onend: exactly what the reader does. */
+  function chainTest(voices, done) {
+    var parts = [
+      "One. This is the first of six short lines.",
+      "Two. If you hear this, chaining works.",
+      "Three. The reader speaks a sentence at a time like this.",
+      "Four. Most failures show up right about here.",
+      "Five. Nearly there now.",
+      "Six. All six played, chaining is healthy."
+    ];
+    var heard = 0, i = 0;
+    say("");
+    say("=== CHAIN TEST (6 linked utterances) ===");
+    (function next() {
+      if (i >= parts.length) return done(heard);
+      var n = i + 1;
+      trySpeak("chunk " + n, parts[i], null, 15000, function (r) {
+        if (r.how === "ended") heard++;
+        i++;
+        if (r.how === "ended") { next(); return; }
+        log("chain stopped at chunk " + n + " (" + r.how + ")");
+        done(heard);
+      });
+    })();
+  }
+
+  document.getElementById("run").onclick = function () {
+    this.disabled = true;
+    lines = []; verdicts.innerHTML = ""; t0 = Date.now();
+    environment();
+    if (!TTS) {
+      verdict("This browser has no speech engine at all.", "bad");
+      document.getElementById("copy").disabled = false;
+      this.disabled = false;
+      return;
+    }
+    var btn = this;
+    waitForVoices(function (voices) {
+      reportVoices(voices);
+      var localVoice = voices.filter(function (v) { return v.localService; })[0];
+
+      say("");
+      say("=== SINGLE UTTERANCE ===");
+      trySpeak("single", "Testing the speech engine. This is a single short line.", null, 15000,
+      function (r1) {
+        if (r1.how !== "ended") {
+          verdict("A single short line failed here (" + r1.how + "). The engine is not speaking at all, so this is not about sentence chaining.", "bad");
+        }
+        chainTest(voices, function (heard) {
+          say("");
+          say("chain result: " + heard + " of 6 spoke to completion");
+          if (heard === 6) {
+            verdict("All six chained lines played. Speech chaining is healthy on this device.", "good");
+          } else if (heard === 0) {
+            verdict("Nothing played. The engine is refusing to speak here.", "bad");
+          } else {
+            verdict("Speech stopped after " + heard + " of 6 lines. This reproduces your problem, and the report shows exactly which event fired at the cut-off.", "bad");
+          }
+
+          function wrapUp() {
+            say("");
+            say("=== END OF REPORT ===");
+            document.getElementById("copy").disabled = false;
+            btn.disabled = false;
+          }
+
+          if (localVoice) {
+            say("");
+            say("=== ON-DEVICE VOICE ONLY (" + localVoice.name + ") ===");
+            trySpeak("on-device", "This line is being read by a voice stored on your device, with no network involved.",
+              localVoice, 15000, function (r3) {
+                if (r3.how === "ended") {
+                  verdict("The on-device voice works. Selecting " + localVoice.name + " in the player should give you reliable playback with no network at all.", "good");
+                } else {
+                  verdict("Even the on-device voice failed (" + r3.how + "), so the connection is not the cause here.", "bad");
+                }
+                wrapUp();
+              });
+          } else { wrapUp(); }
+        });
+      });
+    });
+  };
+
+  /* Screen lock / app switch is the one failure no amount of JavaScript can
+     fix: the page is suspended and the speech engine goes with it. */
+  document.getElementById("bg").onclick = function () {
+    this.disabled = true;
+    lines = []; verdicts.innerHTML = ""; t0 = Date.now();
+    var btn = this;
+    say("=== BACKGROUND TEST ===");
+    say("Lock your screen or switch apps now. Come back in about 20 seconds.");
+    log("visibility at start: " + document.visibilityState);
+
+    var hidden = false;
+    function onVis() { log("visibility changed to: " + document.visibilityState);
+                       if (document.visibilityState === "hidden") hidden = true; }
+    document.addEventListener("visibilitychange", onVis);
+
+    var spoke = 0, i = 0, parts = [];
+    for (var n = 1; n <= 10; n++) parts.push("Line " + n + ". Still speaking.");
+
+    (function next() {
+      if (i >= parts.length) return finish();
+      var n = i + 1;
+      trySpeak("bg " + n, parts[i], null, 15000, function (r) {
+        if (r.how === "ended") { spoke++; i++; next(); }
+        else { log("stopped at line " + n + " (" + r.how + ")"); finish(); }
+      });
+    })();
+
+    function finish() {
+      document.removeEventListener("visibilitychange", onVis);
+      say("");
+      say("spoke " + spoke + " of 10 lines; page was hidden at some point: " + hidden);
+      if (hidden && spoke < 10) {
+        verdict("Speech stopped while the page was in the background. This is a hard browser limit: the Web Speech API is suspended when the screen locks or you switch apps. No code change can fix it. Real audio files are the only way to listen with the screen off.", "bad");
+      } else if (hidden && spoke === 10) {
+        verdict("Speech survived backgrounding on this device.", "good");
+      } else {
+        verdict("The page never went to the background, so this test says nothing. Run it again and lock the screen.", "");
+      }
+      say("");
+      say("=== END OF REPORT ===");
+      document.getElementById("copy").disabled = false;
+      btn.disabled = false;
+    }
+  };
+
+  document.getElementById("copy").onclick = function () {
+    var text = out.textContent;
+    function fallback() {
+      var ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(fallback);
+    } else { fallback(); }
+    this.textContent = "Copied";
+    var b = this;
+    setTimeout(function () { b.textContent = "Copy report"; }, 1500);
+  };
+})();
+</script>
+</body>
+</html>
