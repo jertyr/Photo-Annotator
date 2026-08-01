@@ -201,19 +201,39 @@
             btn.disabled = false;
           }
 
-          if (localVoice) {
-            say("");
-            say("=== ON-DEVICE VOICE ONLY (" + localVoice.name + ") ===");
-            trySpeak("on-device", "This line is being read by a voice stored on your device, with no network involved.",
-              localVoice, 15000, function (r3) {
-                if (r3.how === "ended") {
-                  verdict("The on-device voice works. Selecting " + localVoice.name + " in the player should give you reliable playback with no network at all.", "good");
-                } else {
-                  verdict("Even the on-device voice failed (" + r3.how + "), so the connection is not the cause here.", "bad");
-                }
-                wrapUp();
-              });
-          } else { wrapUp(); }
+          /* A voice appearing in getVoices() does not mean the device can
+             actually produce it. Android lists every locale its engine knows
+             about, including ones whose data was never downloaded, so the
+             only way to know is to make each one speak. */
+          var english = voices.filter(function (v) { return /^en(-|_|$)/i.test(v.lang); });
+          say("");
+          say("=== EACH ENGLISH VOICE (" + english.length + ") ===");
+          var j = 0, working = [], broken = [];
+          (function nextVoice() {
+            if (j >= english.length) {
+              say("");
+              say("working : " + (working.join(", ") || "none"));
+              say("broken  : " + (broken.join(", ") || "none"));
+              if (working.length) {
+                verdict("These English voices actually speak here: " + working.join(", ") +
+                        ". Pick one of those in the player's voice menu.", "good");
+              } else {
+                verdict("No named English voice can speak on this device. The player's new “Device default” option is the one to use, since it lets the engine choose for itself.", "bad");
+              }
+              if (broken.length) {
+                verdict("These are listed but cannot speak: " + broken.join(", ") +
+                        ". Selecting one of them is what silences the reader.", "bad");
+              }
+              wrapUp();
+              return;
+            }
+            var v = english[j];
+            trySpeak(v.name, "Testing " + v.name + ".", v, 12000, function (r) {
+              (r.how === "ended" ? working : broken).push(v.name);
+              j++;
+              nextVoice();
+            });
+          })();
         });
       });
     });
