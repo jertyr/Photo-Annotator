@@ -329,6 +329,7 @@
     lastTick: 0,    // when audio last demonstrably progressed
     fails: 0,       // consecutive failures, reset by any chunk that completes
     note: "",       // what to tell the listener when something went wrong
+    voiceSet: false,// whether a voice has been resolved (null is a real choice)
   };
   var watchdog = null;
 
@@ -376,23 +377,36 @@
   function isLocal(v) { return v.localService === true; }
   function voiceName(v) { return v.name.replace(/ \(.*\)$/, ""); }
 
-  /* Voice choice is the difference between working and not working on a weak
-     connection. Chrome's "Google ..." voices are synthesised on Google's
-     servers, so every utterance is a network round trip and the reader dies
-     the moment the signal drops. On-device voices need no network at all, so
-     they sort first and become the default. The online ones stay available:
-     they sound better when there is bandwidth to spare. */
+  /* DEFAULT_VOICE means "name no voice at all" and leave the choice to the
+     engine, which follows the page language. It is the one setting that works
+     everywhere, because it cannot name a voice the device cannot produce. */
+  var DEFAULT_VOICE = "__default__";
+  var badVoices = {};   // voiceURI -> true, once a voice has refused to speak here
+
+  /* localService cannot be trusted to mean "this will work". Android lists
+     every locale its TTS engine knows about, around ninety of them, all
+     flagged as on-device, including the ones whose voice data was never
+     downloaded. Those fail with synthesis-failed the moment you use them.
+     Ordering therefore aims at the voice most likely to be installed: the
+     one matching the browser's own language, then other English voices. */
   function orderVoices(voices) {
-    function rank(v) { return (isLocal(v) ? 0 : 2) + (isEnglish(v) ? 0 : 1); }
+    var want = (navigator.language || "en-US").toLowerCase().replace(/_/g, "-");
+    function rank(v) {
+      var lang = (v.lang || "").toLowerCase().replace(/_/g, "-");
+      var score = isLocal(v) ? 0 : 8;      // on desktop Chrome the online voices need a network
+      if (lang === want) return score;
+      if (lang.split("-")[0] === want.split("-")[0]) return score + 1;
+      return score + (isEnglish(v) ? 2 : 4);
+    }
     return voices.slice().sort(function (a, b) {
       return (rank(a) - rank(b)) || a.name.localeCompare(b.name);
     });
   }
 
-  function firstLocalVoice() {
-    var ordered = orderVoices(window.speechSynthesis.getVoices() || []);
-    return ordered.filter(function (v) { return isLocal(v) && isEnglish(v); })[0] ||
-           ordered.filter(isLocal)[0] || null;
+  /* Voices we have not already watched fail, best first. */
+  function candidateVoices() {
+    return orderVoices(window.speechSynthesis.getVoices() || [])
+      .filter(function (v) { return !badVoices[v.voiceURI]; });
   }
 
   function populateVoices() {
@@ -402,28 +416,61 @@
     if (!voices.length) return; // will be called again on voiceschanged
     var ordered = orderVoices(voices);
     var saved = localStorage.getItem("tangents.voice");
-    var chosen = ordered.filter(function (v) { return v.voiceURI === saved; })[0] || ordered[0];
-    sel.innerHTML = ordered.map(function (v) {
-      return '<option value="' + escapeHtml(v.voiceURI) + '"' +
-        (v.voiceURI === chosen.voiceURI ? " selected" : "") + ">" +
-        escapeHtml(voiceName(v) + (isLocal(v) ? " (on device)" : " (online)")) + "</option>";
-    }).join("");
-    // A voice picked mid-listen stays put; this only fills in the default.
-    var current = speech.voice &&
-      ordered.filter(function (v) { return v.voiceURI === speech.voice.voiceURI; })[0];
-    speech.voice = current || chosen;
+
+    if (!speech.voiceSet) {
+      speech.voice = saved === DEFAULT_VOICE ? null
+        : (ordered.filter(function (v) { return v.voiceURI === saved; })[0] || ordered[0] || null);
+      speech.voiceSet = true;
+    }
+    var cur = speech.voice ? speech.voice.voiceURI : DEFAULT_VOICE;
+
+    sel.innerHTML =
+      '<option value="' + DEFAULT_VOICE + '"' + (cur === DEFAULT_VOICE ? " selected" : "") + ">" +
+        "Device default</option>" +
+      ordered.map(function (v) {
+        return '<option value="' + escapeHtml(v.voiceURI) + '"' +
+          (v.voiceURI === cur ? " selected" : "") + ">" +
+          escapeHtml(voiceName(v) + (isLocal(v) ? "" : " (online)")) + "</option>";
+      }).join("");
+
+    // Keep hold of the live object for the chosen voice; getVoices() can hand
+    // back fresh instances and a stale one will not speak.
+    if (speech.voice) {
+      speech.voice = ordered.filter(function (v) { return v.voiceURI === cur; })[0] || speech.voice;
+    }
   }
 
   function useVoice(v) {
-    speech.voice = v;
-    try { localStorage.setItem("tangents.voice", v.voiceURI); } catch (e) { /* private mode */ }
+    speech.voice = v || null;
+    speech.voiceSet = true;
+    try { localStorage.setItem("tangents.voice", v ? v.voiceURI : DEFAULT_VOICE); }
+    catch (e) { /* private mode */ }
     var sel = document.getElementById("voice");
-    if (sel) sel.value = v.voiceURI;
+    if (sel) sel.value = v ? v.voiceURI : DEFAULT_VOICE;
+  }
+
+  /* A voice that cannot synthesise here fails identically every time, so
+     retrying it is pointless. Strike it off, take the next candidate, and
+     when the named voices are exhausted hand the choice back to the engine. */
+  function tryNextVoice() {
+    if (!speech.voice) return false;          // already on the engine default
+    var dead = speech.voice;
+    badVoices[dead.voiceURI] = true;
+    var next = candidateVoices()[0];
+    if (next) {
+      useVoice(next);
+      note(voiceName(dead) + " will not speak on this device. Switched to " + voiceName(next) + ".");
+    } else {
+      useVoice(null);
+      note("No named voice would speak here. Using the device's default voice.");
+    }
+    speech.fails = 0;
+    return true;
   }
 
   function switchToLocalVoice(why) {
     if (!speech.voice || isLocal(speech.voice)) return false;
-    var local = firstLocalVoice();
+    var local = candidateVoices().filter(isLocal)[0];
     if (!local) return false;
     useVoice(local);
     speech.fails = 0;
@@ -537,9 +584,13 @@
   function speechFailed(reason) {
     if (!speech.playing) return;
     speech.fails++;
-    if (speech.fails <= 2) { restartChunk(300 * speech.fails); return; }
-    if (switchToLocalVoice("Trouble reaching the online voice.")) { restartChunk(200); return; }
-    if (speech.fails <= 5) { restartChunk(600 * (speech.fails - 2)); return; }
+    // One retry covers a transient blip. Beyond that the voice itself is the
+    // suspect, and a voice that cannot speak will not start working.
+    if (speech.fails <= 1) { restartChunk(300); return; }
+    if (reason === "network" &&
+        switchToLocalVoice("Trouble reaching the online voice.")) { restartChunk(200); return; }
+    if (tryNextVoice()) { restartChunk(200); return; }
+    if (speech.fails <= 4) { restartChunk(600 * (speech.fails - 1)); return; }
     note("Speech keeps failing here (" + reason + "). Press play to try again.");
     pause();
   }
@@ -716,9 +767,13 @@
     };
     p.querySelector("#voice").onchange = function () {
       var picked = this.value;
-      var voices = window.speechSynthesis.getVoices() || [];
-      var v = voices.filter(function (x) { return x.voiceURI === picked; })[0];
-      if (!v) return;
+      var v = null;
+      if (picked !== DEFAULT_VOICE) {
+        v = (window.speechSynthesis.getVoices() || [])
+          .filter(function (x) { return x.voiceURI === picked; })[0];
+        if (!v) return;
+        delete badVoices[v.voiceURI];   // they asked for it; give it another chance
+      }
       useVoice(v);
       speech.fails = 0;
       note("");                // their choice wins; stop nagging about the last one
