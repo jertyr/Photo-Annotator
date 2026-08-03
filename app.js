@@ -333,11 +333,16 @@
   };
   var watchdog = null;
 
-  /* Safari does not have Chrome's cut-off bug, and a resume() issued there
-     outside a user gesture can leave synthesis paused for good, so the nudge
-     below is kept to Chromium. iOS Chrome is Safari underneath. */
+  /* The pause()/resume() nudge exists for one browser only: desktop Chrome,
+     which abandons a long utterance after about fifteen seconds. Everywhere
+     else it does harm. Safari can stall for good on a resume() issued outside
+     a user gesture, and on Android pause() frequently kills the utterance
+     without resume() ever bringing it back, so the nudge becomes the thing
+     that stops playback rather than the thing that saves it. Android speech
+     is native and has no cut-off to work around. */
   var UA = navigator.userAgent || "";
-  var NEEDS_NUDGE = /Chrome|Chromium|Edg\//.test(UA) && !/iPhone|iPad|iPod/.test(UA);
+  var NEEDS_NUDGE = /Chrome|Chromium|Edg\//.test(UA) &&
+                    !/iPhone|iPad|iPod|Android|Mobile/i.test(UA);
 
   function playerEl() { return document.getElementById("player"); }
 
